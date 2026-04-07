@@ -97,6 +97,248 @@ body {
   opacity: 0.92;
 }
 
+/* Floating neon accents (not tied to engraved paths) */
+.app-neon-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.app-neon {
+  position: absolute;
+  will-change: transform, opacity;
+}
+
+.app-neon--orb {
+  border-radius: 50%;
+  width: min(28vw, 220px);
+  height: min(28vw, 220px);
+  background: radial-gradient(
+    circle at 35% 35%,
+    color-mix(in srgb, var(--neon-c) 22%, transparent) 0%,
+    color-mix(in srgb, var(--neon-c) 6%, transparent) 42%,
+    transparent 68%
+  );
+  box-shadow:
+    0 0 28px 12px color-mix(in srgb, var(--neon-c) 14%, transparent),
+    0 0 56px 28px color-mix(in srgb, var(--neon-c) 7%, transparent),
+    inset 0 0 22px color-mix(in srgb, var(--neon-c) 8%, transparent);
+  opacity: var(--neon-base-o, 0.55);
+  animation: app-neon-pulse var(--neon-dur, 7s) ease-in-out infinite;
+  animation-delay: var(--neon-delay, 0s);
+}
+
+.app-neon--a {
+  --neon-c: #4a9fe8;
+  left: 8%;
+  top: 6%;
+  --neon-dur: 8s;
+  --neon-delay: 0s;
+  --neon-base-o: 0.45;
+}
+
+.app-neon--b {
+  --neon-c: #7c6cf0;
+  right: 4%;
+  top: 22%;
+  width: min(22vw, 160px);
+  height: min(22vw, 160px);
+  --neon-dur: 9.5s;
+  --neon-delay: -2s;
+  --neon-base-o: 0.38;
+}
+
+.app-neon--c {
+  --neon-c: #5ecf9a;
+  left: 2%;
+  bottom: 12%;
+  width: min(32vw, 240px);
+  height: min(32vw, 240px);
+  --neon-dur: 10s;
+  --neon-delay: -4.5s;
+  --neon-base-o: 0.32;
+}
+
+.app-neon--arc {
+  width: min(42vw, 320px);
+  height: min(42vw, 320px);
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--neon-c) 28%, transparent);
+  background: transparent;
+  box-shadow:
+    0 0 14px 2px color-mix(in srgb, var(--neon-c) 12%, transparent),
+    0 0 32px 8px color-mix(in srgb, var(--neon-c) 6%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--neon-c) 5%, transparent);
+  opacity: 0.4;
+  animation: app-neon-drift var(--neon-dur, 14s) ease-in-out infinite;
+  animation-delay: var(--neon-delay, 0s);
+}
+
+.app-neon--d {
+  --neon-c: #5ab0ff;
+  right: -8%;
+  top: 38%;
+  clip-path: inset(0 48% 48% 0);
+  --neon-dur: 16s;
+  --neon-delay: -1s;
+}
+
+.app-neon--e {
+  --neon-c: #b894f5;
+  left: -12%;
+  bottom: 18%;
+  clip-path: inset(48% 0 0 42%);
+  width: min(48vw, 360px);
+  height: min(48vw, 360px);
+  --neon-dur: 18s;
+  --neon-delay: -7s;
+  opacity: 0.32;
+}
+
+.app-neon--dash {
+  height: 2px;
+  width: min(36vw, 280px);
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--neon-c) 55%, transparent) 22%,
+    color-mix(in srgb, var(--neon-c) 35%, transparent) 78%,
+    transparent
+  );
+  box-shadow:
+    0 0 10px 3px color-mix(in srgb, var(--neon-c) 18%, transparent),
+    0 0 24px 8px color-mix(in srgb, var(--neon-c) 8%, transparent);
+  opacity: 0.5;
+  animation: app-neon-shimmer var(--neon-dur, 6s) ease-in-out infinite;
+  animation-delay: var(--neon-delay, 0s);
+}
+
+.app-neon--f {
+  --neon-c: #4a9fe8;
+  left: 18%;
+  top: 52%;
+  transform: rotate(-18deg);
+  --neon-dur: 5.5s;
+  --neon-delay: -0.8s;
+}
+
+.app-neon--g {
+  --neon-c: #6ee0c0;
+  right: 12%;
+  bottom: 28%;
+  width: min(28vw, 200px);
+  transform: rotate(24deg);
+  --neon-dur: 7s;
+  --neon-delay: -3.2s;
+  opacity: 0.42;
+}
+
+.app-neon--dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--neon-c) 75%, white);
+  box-shadow:
+    0 0 8px 3px color-mix(in srgb, var(--neon-c) 35%, transparent),
+    0 0 20px 6px color-mix(in srgb, var(--neon-c) 15%, transparent);
+  opacity: 0.65;
+  animation: app-neon-blink var(--neon-dur, 3.2s) ease-in-out infinite;
+  animation-delay: var(--neon-delay, 0s);
+}
+
+.app-neon--h {
+  --neon-c: #7eb8ff;
+  left: 72%;
+  top: 14%;
+  --neon-dur: 4s;
+  --neon-delay: -1.5s;
+}
+
+.app-neon--i {
+  --neon-c: #9f8fff;
+  left: 42%;
+  bottom: 8%;
+  --neon-dur: 3.6s;
+  --neon-delay: -2.2s;
+}
+
+@keyframes app-neon-pulse {
+  0%,
+  100% {
+    opacity: var(--neon-base-o, 0.5);
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    opacity: calc(var(--neon-base-o, 0.5) * 1.35);
+    transform: scale(1.06) translate(1%, -0.8%);
+  }
+}
+
+@keyframes app-neon-drift {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    opacity: 0.48;
+    transform: rotate(6deg) scale(1.03);
+  }
+}
+
+@keyframes app-neon-shimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+    filter: brightness(0.92);
+  }
+  50% {
+    opacity: 0.62;
+    filter: brightness(1.08);
+  }
+}
+
+@keyframes app-neon-blink {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  45% {
+    opacity: 0.85;
+    transform: scale(1.15);
+  }
+  55% {
+    opacity: 0.85;
+    transform: scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-neon-layer .app-neon {
+    animation: none !important;
+  }
+
+  .app-neon--orb {
+    opacity: calc(var(--neon-base-o, 0.5) * 0.85);
+  }
+
+  .app-neon--arc {
+    opacity: 0.32;
+  }
+
+  .app-neon--dash {
+    opacity: 0.42;
+  }
+
+  .app-neon--dot {
+    opacity: 0.55;
+  }
+}
+
 #root {
   position: relative;
   z-index: 1;
