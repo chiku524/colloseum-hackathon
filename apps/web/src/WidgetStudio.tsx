@@ -183,6 +183,22 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
     }
   }, [previewBaseSrc, debugPostMessageToSelf]);
 
+  const copyRaw = useCallback(
+    async (text: string, okMsg: string) => {
+      if (!text.trim()) {
+        onCopyError('Nothing to copy yet.');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        onCopySuccess(okMsg);
+      } catch (e) {
+        onCopyError(e instanceof Error ? e.message : 'Copy failed.');
+      }
+    },
+    [onCopySuccess, onCopyError],
+  );
+
   const handleCopySnippet = useCallback(async () => {
     if (!snippet) {
       onCopyError(
@@ -220,7 +236,12 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
             Open {WIDGET_MANIFEST_PATH}
           </a>
         </p>
-        {manifestLoadErr && <p className="error">{manifestLoadErr}</p>}
+        {manifestLoadErr ? (
+          <p className="muted" role="status">
+            Could not load <code>{WIDGET_MANIFEST_PATH}</code> ({manifestLoadErr}). Using in-app protocol{' '}
+            <code>{WIDGET_BRIDGE_PROTOCOL}</code> — embed behavior is unchanged.
+          </p>
+        ) : null}
         {manifest?.post_message?.events && manifest.post_message.events.length > 0 && (
           <ul className="widget-studio__manifest-events muted">
             {manifest.post_message.events.map((ev) => (
@@ -263,6 +284,59 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
           </button>
         </div>
       )}
+
+      <div className="widget-studio__quick-copy">
+        <h3 className="widget-studio__manifest-title">Quick copy</h3>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Copy common outputs without changing the snippet type below.
+        </p>
+        <div className="btn-row widget-studio__quick-copy-btns">
+          <button
+            type="button"
+            className="ghost"
+            disabled={!publicLink}
+            onClick={() => void copyRaw(publicLink, 'Copied public status link.')}
+          >
+            Public link
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            disabled={!fullEmbedSrc}
+            onClick={() =>
+              void copyRaw(
+                fullEmbedSrc ? iframeSnippet(fullEmbedSrc, { height: 520 }) : '',
+                'Copied full iframe HTML.',
+              )
+            }
+          >
+            Full iframe HTML
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            disabled={!compactEmbedSrc}
+            onClick={() =>
+              void copyRaw(
+                compactEmbedSrc
+                  ? iframeSnippet(compactEmbedSrc, { height: 160, title: `${BRAND_NAME} treasury (compact)` })
+                  : '',
+                'Copied compact iframe HTML.',
+              )
+            }
+          >
+            Compact iframe HTML
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            disabled={!apiUrl}
+            onClick={() => void copyRaw(apiUrl, 'Copied API URL.')}
+          >
+            API URL
+          </button>
+        </div>
+      </div>
 
       <div className="field-row widget-studio__fields">
         <div className="field" style={{ flex: '1 1 12rem' }}>

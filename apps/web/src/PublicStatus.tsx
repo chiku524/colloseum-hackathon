@@ -6,6 +6,7 @@ import idlJson from '@idl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BRAND_NAME } from './brand';
 import { BrandMark } from './BrandMark';
+import { SharedViewBanner } from './SharedViewBanner';
 import { hex32 } from './policy';
 import {
   WIDGET_BRIDGE_PROTOCOL,
@@ -358,9 +359,19 @@ export function PublicStatus() {
 
   return (
     <div className={shellClass}>
+      {!displayParams.embed ? <SharedViewBanner variant="status" /> : null}
       {displayParams.compact ? (
         <>
-          {state.kind === 'loading' && <p className="muted widget-embed-compact__pad">Loading…</p>}
+          {state.kind === 'loading' && (
+            <div className="public-status-skeleton public-status-skeleton--compact" aria-busy="true" aria-label="Loading">
+              <div className="ux-sk ux-sk--bar ux-sk--bar-lg" />
+              <div className="ux-sk-grid ux-sk-grid--compact">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="ux-sk ux-sk--tile" />
+                ))}
+              </div>
+            </div>
+          )}
           {state.kind === 'error' && <p className="error widget-embed-compact__pad">{state.message}</p>}
           {state.kind === 'ok' && (
             <div className="widget-embed-compact" aria-label="Treasury status">
@@ -448,7 +459,17 @@ network: ${defaultRpc}`}
             </pre>
           </div>
 
-          {state.kind === 'loading' && <p className="muted">Loading…</p>}
+          {state.kind === 'loading' && (
+            <div className="public-status-skeleton" aria-busy="true" aria-label="Loading treasury data">
+              <div className="ux-sk ux-sk--bar ux-sk--bar-lg" />
+              <div className="ux-sk ux-sk--bar" />
+              <div className="ux-sk-grid">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="ux-sk ux-sk--tile" />
+                ))}
+              </div>
+            </div>
+          )}
 
           {state.kind === 'error' && <p className="error">{state.message}</p>}
 

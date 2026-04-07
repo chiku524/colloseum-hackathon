@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatTxError } from './anchorErrors';
 import { BRAND_NAME } from './brand';
 import { BrandMark } from './BrandMark';
+import { SharedViewBanner } from './SharedViewBanner';
 import {
   decodePolicyFromQueryParam,
   simulatePayout,
@@ -70,6 +71,8 @@ export function PolicySimulatorShare() {
           </div>
         </div>
       </header>
+
+      <SharedViewBanner variant="simulate" />
 
       {policy && (
         <div className="panel">

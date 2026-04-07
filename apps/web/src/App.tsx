@@ -8,12 +8,11 @@ import {
   getAssociatedTokenAddressSync,
 } from '@solana/spl-token';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import idlJson from '@idl';
 import { formatTxError } from './anchorErrors';
 import { BRAND_NAME, BRAND_TAGLINE } from './brand';
 import { BrandMark } from './BrandMark';
-import { PolicyBuilder } from './PolicyBuilder';
 import {
   canonicalPolicyJson,
   defaultPolicy,
@@ -39,8 +38,25 @@ import {
 } from './auditExport';
 import { mergeSplitsIntoPolicy } from './csvPolicy';
 import { ensureWalletAta, recipientAtaForMint } from './splUtil';
-import { TreasuryAnalytics } from './TreasuryAnalytics';
-import { WidgetStudio } from './WidgetStudio';
+import { inferClusterLabel } from './rpcCluster';
+import { CLUSTER_LABELS } from './solanaCluster';
+import { useClusterTransactionGuard } from './useClusterTransactionGuard';
+import { ToastStack, useToast } from './ToastStack';
+import { UxAccordion } from './UxAccordion';
+
+const PolicyBuilder = lazy(() => import('./PolicyBuilder').then((m) => ({ default: m.PolicyBuilder })));
+const TreasuryAnalytics = lazy(() => import('./TreasuryAnalytics').then((m) => ({ default: m.TreasuryAnalytics })));
+const WidgetStudio = lazy(() => import('./WidgetStudio').then((m) => ({ default: m.WidgetStudio })));
+
+function TabSectionFallback() {
+  return (
+    <div className="panel ux-tab-fallback" aria-busy="true" aria-label="Loading this section">
+      <div className="ux-sk ux-sk--bar ux-sk--bar-lg" />
+      <div className="ux-sk ux-sk--bar" />
+      <div className="ux-sk ux-sk--bar ux-sk--bar-short" />
+    </div>
+  );
+}
 
 const idl = idlJson as Idl;
 const PROGRAM_ID = new PublicKey((idlJson as { address: string }).address);
@@ -122,6 +138,17 @@ export default function App() {
   const [status, setStatus] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { items: toastItems, push: pushToast, dismiss: dismissToast } = useToast();
+
+  const {
+    rpcCluster,
+    walletCluster,
+    mismatch: clusterMismatch,
+    walletClusterUnknown,
+    rpcClusterLabel,
+    genesisError: clusterGenesisError,
+    guardBeforeSignTransaction,
+  } = useClusterTransactionGuard(connection, wallet);
 
   const [onChain, setOnChain] = useState<{
     project: PublicKey;
@@ -195,6 +222,8 @@ export default function App() {
   }, [wallet.publicKey, onChain?.approverPubkeys]);
 
   const canViewTreasuryAnalytics = treasuryVisibility === 'public' || isProjectApprover;
+
+  const projectLoaded = Boolean(onChain);
 
   const projectPda = useMemo(() => {
     if (!wallet.publicKey) return null;
@@ -274,7 +303,7 @@ export default function App() {
       if (!acc) {
         setOnChain(null);
         setProposals([]);
-        setStatus('No project found for this wallet and number yet. Create one under Setup first.');
+        pushToast('No project found for this wallet and number yet. Create one under Setup first.', 'info');
         return;
       }
       const hashHex = hex32(Uint8Array.from(acc.policyHash as number[]));
@@ -356,13 +385,13 @@ export default function App() {
         frozen: Boolean(acc.frozen),
         requireArtifactForExecute: Boolean(acc.requireArtifactForExecute),
       });
-      setStatus('Project loaded.');
+      pushToast('Project loaded.');
     } catch (e) {
       setErr(formatTxError(e));
     } finally {
       setBusy(false);
     }
-  }, [program, projectPda, wallet.publicKey, connection]);
+  }, [program, projectPda, wallet.publicKey, connection, pushToast]);
 
   const parsePolicy = (): TreasuryPolicy => {
     const raw = JSON.parse(policyText) as TreasuryPolicy;
@@ -378,7 +407,7 @@ export default function App() {
         setErr(v);
         return;
       }
-      setStatus('Rules look valid.');
+      pushToast('Rules look valid.');
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -447,7 +476,7 @@ export default function App() {
         return;
       }
       await navigator.clipboard.writeText(url);
-      setStatus('Copied the read-only “what if” link (no wallet needed).');
+      pushToast('Copied the read-only “what if” link (no wallet needed).');
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -460,14 +489,21 @@ export default function App() {
       setErr('Connect your wallet first.');
       return;
     }
-    setBusy(true);
+    let p: TreasuryPolicy;
     try {
-      const p = parsePolicy();
+      p = parsePolicy();
       const v = validatePolicy(p);
       if (v) {
         setErr(v);
         return;
       }
+    } catch (e) {
+      setErr(formatTxError(e));
+      return;
+    }
+    if (!(await guardBeforeSignTransaction())) return;
+    setBusy(true);
+    try {
       const canon = canonicalPolicyJson(p);
       const h = await sha256BytesUtf8(canon);
       const arr = Array.from(h);
@@ -518,6 +554,7 @@ export default function App() {
       return;
     }
     const propPda = proposalPdaFromId(onChain.project, pid);
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sha = parseHex32(artHex);
@@ -550,6 +587,7 @@ export default function App() {
     }
     const pid = Number(opsProposalId);
     const propPda = proposalPdaFromId(onChain.project, pid);
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -578,6 +616,7 @@ export default function App() {
     }
     const pid = Number(opsProposalId);
     const propPda = proposalPdaFromId(onChain.project, pid);
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -608,7 +647,7 @@ export default function App() {
         return;
       }
       setPolicyText(JSON.stringify(merged, null, 2));
-      setStatus('Imported the spreadsheet rows into your split list. Tap Validate, then Apply on-chain when ready.');
+      pushToast('Imported spreadsheet rows into your split list. Validate, then save on-chain when ready.');
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -633,6 +672,7 @@ export default function App() {
       setErr('Approvals needed must be a whole number between 1 and how many approvers you listed.');
       return;
     }
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const nameBuf = Buffer.from(initName.slice(0, 64), 'utf8');
@@ -668,6 +708,7 @@ export default function App() {
       setErr('That token address does not look valid. Paste the full mint address for the coin you want to hold.');
       return;
     }
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const [vaultState] = PublicKey.findProgramAddressSync(
@@ -713,6 +754,7 @@ export default function App() {
       setErr(formatTxError(e));
       return;
     }
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const mint = new PublicKey(onChain.mint);
@@ -779,6 +821,7 @@ export default function App() {
     }
     const nextId = onChain.nextProposalId;
     const proposalPda = proposalPdaFromId(onChain.project, nextId);
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -810,6 +853,7 @@ export default function App() {
       return;
     }
     const proposalPda = proposalPdaFromId(onChain.project, pid);
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -890,6 +934,7 @@ export default function App() {
     );
     const vaultAta = getAssociatedTokenAddressSync(mint, vaultState, true);
     const proposalPda = proposalPdaFromId(onChain.project, pid);
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -923,6 +968,7 @@ export default function App() {
       return;
     }
     const proposalPda = proposalPdaFromId(onChain.project, pid);
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -946,6 +992,7 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain) return;
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -970,6 +1017,7 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain) return;
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1007,6 +1055,7 @@ export default function App() {
       setErr('Enter a valid project number (0 or higher).');
       return;
     }
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1102,6 +1151,7 @@ export default function App() {
     } else {
       nextBn = new BN(Math.floor(Date.now() / 1000));
     }
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1135,6 +1185,7 @@ export default function App() {
       setErr('Load your project and finish vault setup first.');
       return;
     }
+    if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
     try {
       // @ts-expect-error IDL account namespace
@@ -1192,7 +1243,7 @@ export default function App() {
       return;
     }
     downloadTextFile(`stronghold-proposals-${onChain.onChainProjectId}.csv`, proposalsToCsv(proposals));
-    setStatus('Payout list downloaded as CSV.');
+    pushToast('Payout list downloaded as CSV.');
   };
 
   const onExportAudit = () => {
@@ -1218,11 +1269,11 @@ export default function App() {
       proposals,
     };
     downloadJson(`stronghold-audit-${onChain.onChainProjectId}.json`, pkg);
-    setStatus('Audit file downloaded.');
+    pushToast('Audit file downloaded.');
   };
 
   return (
-    <div className="app">
+    <div className={`app${tab === 'ledger' ? ' app--ledger-tab' : ''}`}>
       <header className="app-header">
         <div className="brand">
           <BrandMark className="brand-mark" />
@@ -1231,15 +1282,91 @@ export default function App() {
             <p className="tagline">{BRAND_TAGLINE}</p>
           </div>
         </div>
-        <WalletMultiButton />
+        <div className="app-header__wallet">
+          <span className="rpc-cluster-badge" title={connection.rpcEndpoint}>
+            {inferClusterLabel(connection.rpcEndpoint)}
+          </span>
+          <WalletMultiButton />
+          <p className="muted app-header__wallet-hint">Disconnect or switch accounts from your wallet extension.</p>
+        </div>
       </header>
 
-      <nav className="tabs" role="tablist" aria-label="Main sections">
+      {!wallet.publicKey ? (
+        <div className="start-here-strip" role="region" aria-label="Getting started">
+          <strong>Start here</strong>
+          <ol className="start-here-strip__steps">
+            <li>Connect your Solana wallet above.</li>
+            <li>Enter your project number (same as when you created the team).</li>
+            <li>Open Overview and tap Refresh data to load balances and payout requests.</li>
+          </ol>
+        </div>
+      ) : null}
+
+      {clusterGenesisError ||
+      (wallet.connected && rpcCluster !== 'unknown' && (clusterMismatch || walletClusterUnknown)) ? (
+        <div
+          className={`cluster-alignment-banner${
+            clusterGenesisError || clusterMismatch ? ' cluster-alignment-banner--danger' : ''
+          }`}
+          role={clusterGenesisError || clusterMismatch ? 'alert' : 'status'}
+        >
+          {clusterGenesisError ? (
+            <p className="cluster-alignment-banner__text">{clusterGenesisError}</p>
+          ) : clusterMismatch ? (
+            <p className="cluster-alignment-banner__text">
+              <strong>Network mismatch:</strong> This app is on <strong>{rpcClusterLabel}</strong> (from your RPC), but your
+              wallet reported <strong>{walletCluster ? CLUSTER_LABELS[walletCluster] : '—'}</strong>. Signing may fail —
+              switch your wallet to the same network or change <code>VITE_RPC_URL</code>.
+            </p>
+          ) : (
+            <p className="cluster-alignment-banner__text">
+              <strong>Wallet network unknown.</strong> This app uses <strong>{rpcClusterLabel}</strong>. Confirm your wallet
+              extension is set to that network before signing; you will be asked once per browser session if we still cannot
+              detect it.
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      <div className="tabs-mobile-wrap">
+        <label htmlFor="main-section-select" className="sr-only">
+          Main section
+        </label>
+        <select
+          id="main-section-select"
+          className="tabs-mobile-select"
+          value={tab}
+          onChange={(e) => setTab(e.target.value as typeof tab)}
+          aria-label="Main section"
+        >
+          <option value="overview">Overview</option>
+          <option value="treasury">Treasury</option>
+          <option value="setup">Setup</option>
+          <option value="policy">Policy</option>
+          <option value="ledger">Proposals</option>
+          <option value="widgets">Share</option>
+        </select>
+      </div>
+
+      <nav className="tabs tabs--scroll" role="tablist" aria-label="Main sections">
         <button type="button" role="tab" aria-selected={tab === 'overview'} onClick={() => setTab('overview')}>
           Overview
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'treasury'} onClick={() => setTab('treasury')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'treasury'}
+          onClick={() => setTab('treasury')}
+          aria-label={
+            !projectLoaded && wallet.publicKey ? 'Treasury — load project on Overview first' : 'Treasury'
+          }
+        >
           Treasury
+          {!projectLoaded && wallet.publicKey ? (
+            <span className="tab-needs-load" title="Load project on Overview first" aria-hidden>
+              ●
+            </span>
+          ) : null}
         </button>
         <button type="button" role="tab" aria-selected={tab === 'setup'} onClick={() => setTab('setup')}>
           Setup
@@ -1247,11 +1374,33 @@ export default function App() {
         <button type="button" role="tab" aria-selected={tab === 'policy'} onClick={() => setTab('policy')}>
           Policy
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'ledger'} onClick={() => setTab('ledger')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'ledger'}
+          onClick={() => setTab('ledger')}
+          aria-label={!projectLoaded && wallet.publicKey ? 'Proposals — load project on Overview first' : 'Proposals'}
+        >
           Proposals
+          {!projectLoaded && wallet.publicKey ? (
+            <span className="tab-needs-load" title="Load project on Overview first" aria-hidden>
+              ●
+            </span>
+          ) : null}
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'widgets'} onClick={() => setTab('widgets')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'widgets'}
+          onClick={() => setTab('widgets')}
+          aria-label={!projectLoaded && wallet.publicKey ? 'Share — load project on Overview first' : 'Share'}
+        >
           Share
+          {!projectLoaded && wallet.publicKey ? (
+            <span className="tab-needs-load" title="Load project on Overview first" aria-hidden>
+              ●
+            </span>
+          ) : null}
         </button>
       </nav>
 
@@ -1271,12 +1420,27 @@ export default function App() {
                 min={0}
                 value={projectIdStr}
                 onChange={(e) => setProjectIdStr(e.target.value)}
+                aria-describedby="pid-hint"
               />
             </div>
             <button type="button" className="ghost" disabled={busy || !program || !projectPda} onClick={loadOnChain}>
               {busy ? 'Loading…' : 'Refresh data'}
             </button>
           </div>
+          <p id="pid-hint" className="muted field-hint">
+            Must match the number you used under Setup. Amounts elsewhere are in the token’s smallest units (see field
+            hints).
+          </p>
+          {busy && !onChain ? (
+            <div className="ux-overview-skeleton" aria-busy="true" aria-label="Loading project data">
+              <div className="ux-sk-grid">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="ux-sk ux-sk--tile" />
+                ))}
+              </div>
+              <div className="ux-sk ux-sk--bar ux-sk--bar-lg" style={{ marginTop: '0.75rem' }} />
+            </div>
+          ) : null}
           {projectPda && (
             <p className="muted">
               On-chain project address: <code>{projectPda.toBase58()}</code>
@@ -1332,7 +1496,7 @@ Token full address: ${onChain.mint ?? '—'}`}
                     setErr(null);
                     try {
                       await navigator.clipboard.writeText(publicStatusUrl);
-                      setStatus('Copied public status link.');
+                      pushToast('Copied public status link.');
                     } catch (e) {
                       setErr(e instanceof Error ? e.message : 'Could not copy link.');
                     }
@@ -1348,7 +1512,7 @@ Token full address: ${onChain.mint ?? '—'}`}
                     setErr(null);
                     try {
                       await navigator.clipboard.writeText(publicEmbedStatusUrl);
-                      setStatus('Copied embed link for a website iframe.');
+                      pushToast('Copied embed link for a website iframe.');
                     } catch (e) {
                       setErr(e instanceof Error ? e.message : 'Could not copy link.');
                     }
@@ -1425,13 +1589,15 @@ Token full address: ${onChain.mint ?? '—'}`}
               device, or connect with a wallet that can approve payouts.
             </p>
           ) : (
-            <TreasuryAnalytics
-              proposals={proposals}
-              vaultInitialized={onChain.vaultInitialized}
-              vaultAmountRaw={onChain.vaultAmountRaw}
-              vaultDecimals={onChain.vaultInitialized ? onChain.vaultDecimals : 6}
-              mint={onChain.mint}
-            />
+            <Suspense fallback={<TabSectionFallback />}>
+              <TreasuryAnalytics
+                proposals={proposals}
+                vaultInitialized={onChain.vaultInitialized}
+                vaultAmountRaw={onChain.vaultAmountRaw}
+                vaultDecimals={onChain.vaultInitialized ? onChain.vaultDecimals : 6}
+                mint={onChain.mint}
+              />
+            </Suspense>
           )}
           <div className="btn-row" style={{ marginTop: '1rem' }}>
             <button type="button" className="ghost" disabled={busy || !program || !projectPda} onClick={loadOnChain}>
@@ -1596,17 +1762,18 @@ Token full address: ${onChain.mint ?? '—'}`}
               run after the wait time; your wallet pays the small Solana network fee. Older projects may need the one-time
               upgrade first.
             </p>
-            <div className="btn-row">
-              <button
-                type="button"
-                className="ghost"
-                disabled={busy || !program || !wallet.publicKey || !projectPda}
-                onClick={onUpgradeProjectLayout}
-              >
-                One-time upgrade for automation
-              </button>
-            </div>
-            <div className="field-row" style={{ marginTop: '0.75rem' }}>
+            <UxAccordion title="Show automation controls" storageKey="ct-ux-setup-auto">
+              <div className="btn-row">
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={busy || !program || !wallet.publicKey || !projectPda}
+                  onClick={onUpgradeProjectLayout}
+                >
+                  One-time upgrade for automation
+                </button>
+              </div>
+              <div className="field-row" style={{ marginTop: '0.75rem' }}>
               <div className="field" style={{ maxWidth: '8rem' }}>
                 <label htmlFor="amode">Mode</label>
                 <select id="amode" value={autoMode} onChange={(e) => setAutoMode(e.target.value)}>
@@ -1666,17 +1833,20 @@ Token full address: ${onChain.mint ?? '—'}`}
                 Run once now (your wallet pays the fee)
               </button>
             </div>
+            </UxAccordion>
           </div>
         </>
       )}
 
       {tab === 'policy' && (
         <>
-          <PolicyBuilder
-            policyText={policyText}
-            onPolicyTextChange={setPolicyText}
-            teamLead={wallet.publicKey?.toBase58() ?? null}
-          />
+          <Suspense fallback={<TabSectionFallback />}>
+            <PolicyBuilder
+              policyText={policyText}
+              onPolicyTextChange={setPolicyText}
+              teamLead={wallet.publicKey?.toBase58() ?? null}
+            />
+          </Suspense>
 
           {onChain &&
             (() => {
@@ -1739,59 +1909,83 @@ Token full address: ${onChain.mint ?? '—'}`}
           </div>
 
           <div className="panel">
-            <h2>“What if” calculator (shareable link)</h2>
+            <h2>More policy tools</h2>
             <p className="muted">
-              Send finance a read-only link to try deposit math — no wallet. The rules are tucked inside the link, so keep
-              the team small if the link gets long.
+              Shareable calculator, spreadsheet import, and diff — tucked away until you need them.
             </p>
-            <div className="field-row">
-              <div className="field">
-                <label htmlFor="dep">Sample deposit (smallest units)</label>
-                <input id="dep" type="text" value={depositSim} onChange={(e) => setDepositSim(e.target.value)} />
+            <UxAccordion title="Open calculator, import & compare" storageKey="ct-ux-policy-extra">
+              <div className="policy-tools-section">
+                <h3 className="policy-tools-section__title">“What if” calculator (shareable link)</h3>
+                <p className="muted">
+                  Send finance a read-only link to try deposit math — no wallet. The rules are tucked inside the link, so
+                  keep the team small if the link gets long.
+                </p>
+                <div className="field-row">
+                  <div className="field">
+                    <label htmlFor="dep">Sample deposit (smallest units)</label>
+                    <input
+                      id="dep"
+                      type="text"
+                      value={depositSim}
+                      onChange={(e) => setDepositSim(e.target.value)}
+                      aria-describedby="units-hint-policy"
+                    />
+                  </div>
+                  <button type="button" className="ghost" onClick={onSimulate}>
+                    Try it here
+                  </button>
+                  <button type="button" className="ghost" onClick={onCopySimulatorLink}>
+                    Copy link
+                  </button>
+                </div>
+                <p id="units-hint-policy" className="muted field-hint">
+                  Amounts are in the token’s smallest units (same as elsewhere in this app).
+                </p>
               </div>
-              <button type="button" className="ghost" onClick={onSimulate}>
-                Try it here
-              </button>
-              <button type="button" className="ghost" onClick={onCopySimulatorLink}>
-                Copy link
-              </button>
-            </div>
-          </div>
 
-          <div className="panel">
-            <h2>Import splits from a spreadsheet</h2>
-            <p className="muted">
-              Each row: <code>wallet_address,share_points</code> (share is points out of 10,000). Lines starting with{' '}
-              <code>#</code> are notes. This merges into the rules you are editing above.
-            </p>
-            <textarea
-              className="compact"
-              value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
-              spellCheck={false}
-              placeholder={'# Example\nSo11111111111111111111111111111111111111112,7000\nSo11111111111111111111111111111111111111113,3000'}
-            />
-            <div className="btn-row">
-              <button type="button" className="ghost" onClick={onMergeCsvSplits}>
-                Import into rules
-              </button>
-            </div>
-          </div>
+              <div className="policy-tools-section">
+                <h3 className="policy-tools-section__title">Import splits from a spreadsheet</h3>
+                <p className="muted">
+                  Each row: <code>wallet_address,share_points</code> (share is points out of 10,000). Lines starting with{' '}
+                  <code>#</code> are notes. This merges into the rules you are editing above.
+                </p>
+                <textarea
+                  className="compact"
+                  value={csvText}
+                  onChange={(e) => setCsvText(e.target.value)}
+                  spellCheck={false}
+                  placeholder={
+                    '# Example\nSo11111111111111111111111111111111111111112,7000\nSo11111111111111111111111111111111111111113,3000'
+                  }
+                />
+                <div className="btn-row">
+                  <button type="button" className="ghost" onClick={onMergeCsvSplits}>
+                    Import into rules
+                  </button>
+                </div>
+              </div>
 
-          <div className="panel">
-            <h2>Compare to an older version</h2>
-            <p className="muted">
-              Paste an older rules file, or save your current draft as the baseline, then see line-by-line changes.
-            </p>
-            <textarea className="compact" value={baselineText} onChange={(e) => setBaselineText(e.target.value)} spellCheck={false} />
-            <div className="btn-row">
-              <button type="button" className="ghost" onClick={() => setBaselineText(policyText)}>
-                Use current draft as baseline
-              </button>
-              <button type="button" className="ghost" onClick={onDiff}>
-                Show line-by-line diff
-              </button>
-            </div>
+              <div className="policy-tools-section">
+                <h3 className="policy-tools-section__title">Compare to an older version</h3>
+                <p className="muted">
+                  Paste an older rules file, or save your current draft as the baseline, then see line-by-line changes.
+                </p>
+                <textarea
+                  className="compact"
+                  value={baselineText}
+                  onChange={(e) => setBaselineText(e.target.value)}
+                  spellCheck={false}
+                />
+                <div className="btn-row">
+                  <button type="button" className="ghost" onClick={() => setBaselineText(policyText)}>
+                    Use current draft as baseline
+                  </button>
+                  <button type="button" className="ghost" onClick={onDiff}>
+                    Show line-by-line diff
+                  </button>
+                </div>
+              </div>
+            </UxAccordion>
           </div>
         </>
       )}
@@ -1812,7 +2006,13 @@ Token full address: ${onChain.mint ?? '—'}`}
               <div className="field-row">
                 <div className="field">
                   <label htmlFor="rel-amt">Max amount for this request (smallest units)</label>
-                  <input id="rel-amt" type="text" value={relAmount} onChange={(e) => setRelAmount(e.target.value)} />
+                  <input
+                    id="rel-amt"
+                    type="text"
+                    value={relAmount}
+                    onChange={(e) => setRelAmount(e.target.value)}
+                    aria-describedby="ledger-units-hint"
+                  />
                 </div>
                 <div className="field">
                   <label htmlFor="rel-tl">Wait after approval (seconds)</label>
@@ -1830,7 +2030,7 @@ Token full address: ${onChain.mint ?? '—'}`}
                       return;
                     }
                     setRelTimelock(String(policyDefaultTimelockSecs(r.policy)));
-                    setStatus(`Wait time set to your rules default (${policyDefaultTimelockSecs(r.policy)} seconds).`);
+                    pushToast(`Wait time set to your rules default (${policyDefaultTimelockSecs(r.policy)} seconds).`);
                   }}
                 >
                   Use rules default
@@ -1872,8 +2072,12 @@ Token full address: ${onChain.mint ?? '—'}`}
                 value={execTrancheAmount}
                 onChange={(e) => setExecTrancheAmount(e.target.value)}
                 placeholder="Leave blank to send everything still allowed"
+                aria-describedby="ledger-units-hint"
               />
             </div>
+            <p id="ledger-units-hint" className="muted field-hint">
+              All amounts here use the vault token’s smallest units (atomic amount), not human “whole coins.”
+            </p>
             <div className="btn-row">
               <button type="button" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onProposeRelease}>
                 Start payout request
@@ -1896,43 +2100,45 @@ Token full address: ${onChain.mint ?? '—'}`}
               Use the <strong>same payout request number</strong> for each step. Open a dispute: team lead or any approver.
               Close it: lead only. While a dispute is open, payments on that request are blocked.
             </p>
-            <div className="form-grid">
-              <div className="field-row">
-                <div className="field" style={{ flex: '0 0 6rem' }}>
-                  <label htmlFor="opid">Request #</label>
-                  <input id="opid" type="number" min={0} value={opsProposalId} onChange={(e) => setOpsProposalId(e.target.value)} />
-                </div>
-              </div>
-              <div className="field">
-                <label htmlFor="ah">File fingerprint (SHA-256, 64 hex characters)</label>
-                <input id="ah" type="text" placeholder="64 hex characters" value={artHex} onChange={(e) => setArtHex(e.target.value)} />
-              </div>
-              <div className="field-row">
-                <div className="field">
-                  <label htmlFor="au">Link to file (optional)</label>
-                  <input id="au" type="text" value={artUri} onChange={(e) => setArtUri(e.target.value)} />
+            <UxAccordion title="Show proof & dispute forms" storageKey="ct-ux-ledger-proof">
+              <div className="form-grid">
+                <div className="field-row">
+                  <div className="field" style={{ flex: '0 0 6rem' }}>
+                    <label htmlFor="opid">Request #</label>
+                    <input id="opid" type="number" min={0} value={opsProposalId} onChange={(e) => setOpsProposalId(e.target.value)} />
+                  </div>
                 </div>
                 <div className="field">
-                  <label htmlFor="al">Short label</label>
-                  <input id="al" type="text" value={artLabel} onChange={(e) => setArtLabel(e.target.value)} />
+                  <label htmlFor="ah">File fingerprint (SHA-256, 64 hex characters)</label>
+                  <input id="ah" type="text" placeholder="64 hex characters" value={artHex} onChange={(e) => setArtHex(e.target.value)} />
+                </div>
+                <div className="field-row">
+                  <div className="field">
+                    <label htmlFor="au">Link to file (optional)</label>
+                    <input id="au" type="text" value={artUri} onChange={(e) => setArtUri(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="al">Short label</label>
+                    <input id="al" type="text" value={artLabel} onChange={(e) => setArtLabel(e.target.value)} />
+                  </div>
+                </div>
+                <div className="field" style={{ maxWidth: '12rem' }}>
+                  <label htmlFor="am">Milestone label (optional)</label>
+                  <input id="am" type="text" value={artMilestone} onChange={(e) => setArtMilestone(e.target.value)} />
                 </div>
               </div>
-              <div className="field" style={{ maxWidth: '12rem' }}>
-                <label htmlFor="am">Milestone label (optional)</label>
-                <input id="am" type="text" value={artMilestone} onChange={(e) => setArtMilestone(e.target.value)} />
+              <div className="btn-row">
+                <button type="button" disabled={busy || !program || !wallet.publicKey} onClick={onAttachArtifact}>
+                  Attach delivery proof
+                </button>
+                <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey} onClick={onOpenDispute}>
+                  Open dispute
+                </button>
+                <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey} onClick={onResolveDispute}>
+                  Resolve dispute
+                </button>
               </div>
-            </div>
-            <div className="btn-row">
-              <button type="button" disabled={busy || !program || !wallet.publicKey} onClick={onAttachArtifact}>
-                Attach delivery proof
-              </button>
-              <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey} onClick={onOpenDispute}>
-                Open dispute
-              </button>
-              <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey} onClick={onResolveDispute}>
-                Resolve dispute
-              </button>
-            </div>
+            </UxAccordion>
           </div>
 
           <div className="panel">
@@ -1949,26 +2155,58 @@ Token full address: ${onChain.mint ?? '—'}`}
               </button>
             </div>
           </div>
+
+          <div className="app-ledger-sticky" role="toolbar" aria-label="Quick payout actions">
+            <button type="button" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onProposeRelease}>
+              Start request
+            </button>
+            <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onApproveRelease}>
+              Approve
+            </button>
+            <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onExecuteRelease}>
+              Send payment
+            </button>
+            <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onCancelProposal}>
+              Cancel
+            </button>
+          </div>
         </>
       )}
 
       {tab === 'widgets' && (
-        <WidgetStudio
-          projectDefaults={widgetProjectDefaults}
-          policyText={policyText}
-          onCopySuccess={(msg) => {
-            setErr(null);
-            setStatus(msg);
-          }}
-          onCopyError={(msg) => {
-            setStatus(null);
-            setErr(msg);
-          }}
-        />
+        <Suspense fallback={<TabSectionFallback />}>
+          <WidgetStudio
+            projectDefaults={widgetProjectDefaults}
+            policyText={policyText}
+            onCopySuccess={(msg) => {
+              setErr(null);
+              pushToast(msg);
+            }}
+            onCopyError={(msg) => {
+              pushToast(msg, 'error');
+            }}
+          />
+        </Suspense>
       )}
 
-      <div className="toast-area">
-        {err && <p className="error">{err}</p>}
+      <ToastStack items={toastItems} onDismiss={dismissToast} />
+
+      <div className="toast-area" aria-live="polite" aria-relevant="additions text">
+        {err && (
+          <div className="error-with-actions" role="alert">
+            <p className="error">{err}</p>
+            {tab === 'overview' && wallet.publicKey && program && projectPda ? (
+              <div className="btn-row">
+                <button type="button" className="ghost" disabled={busy} onClick={() => void loadOnChain()}>
+                  Try loading again
+                </button>
+              </div>
+            ) : null}
+            <p className="muted rpc-endpoint-hint" style={{ fontSize: '0.82rem', marginTop: '0.35rem' }}>
+              RPC in use: <code>{connection.rpcEndpoint}</code>
+            </p>
+          </div>
+        )}
         {status && <pre className="ok">{status}</pre>}
       </div>
     </div>

@@ -32,18 +32,21 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
   const [fourWayD, setFourWayD] = useState('');
 
   useEffect(() => {
-    if (!policyText.trim()) {
+    const t = window.setTimeout(() => {
+      if (!policyText.trim()) {
+        setParseErr(null);
+        setModel(null);
+        return;
+      }
+      const r = parsePolicyJson(policyText);
+      if (!r.ok) {
+        setParseErr(r.error);
+        return;
+      }
       setParseErr(null);
-      setModel(null);
-      return;
-    }
-    const r = parsePolicyJson(policyText);
-    if (!r.ok) {
-      setParseErr(r.error);
-      return;
-    }
-    setParseErr(null);
-    setModel(toPolicyV2ForEdit(r.policy));
+      setModel(toPolicyV2ForEdit(r.policy));
+    }, 280);
+    return () => window.clearTimeout(t);
   }, [policyText]);
 
   const pushModel = useCallback(
