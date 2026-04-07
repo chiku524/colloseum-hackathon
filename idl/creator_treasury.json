@@ -1,0 +1,280 @@
+{
+  "address": "BYZFRa7NzDB7bKwxxkntewHfWwjBBqM6nsfrVeakBHjV",
+  "metadata": {
+    "name": "creator_treasury",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "initialize_project",
+      "discriminator": [69, 126, 215, 37, 20, 60, 73, 235],
+      "accounts": [
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "team_lead", "writable": true, "signer": true },
+        { "name": "project", "writable": true, "signer": false },
+        { "name": "system_program", "address": "11111111111111111111111111111111" }
+      ],
+      "args": [
+        { "name": "project_id", "type": "u64" },
+        { "name": "name", "type": { "vec": "u8" } },
+        { "name": "approvers", "type": { "vec": "pubkey" } },
+        { "name": "approval_threshold", "type": "u8" }
+      ]
+    },
+    {
+      "name": "initialize_vault",
+      "discriminator": [48, 191, 163, 44, 71, 129, 63, 164],
+      "accounts": [
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "team_lead", "signer": true },
+        { "name": "project", "writable": true },
+        { "name": "mint" },
+        { "name": "vault_state", "writable": true, "signer": false },
+        { "name": "vault_token_account", "writable": true, "signer": false },
+        { "name": "token_program", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" },
+        { "name": "associated_token_program", "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" },
+        { "name": "system_program", "address": "11111111111111111111111111111111" }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_policy",
+      "discriminator": [40, 133, 12, 157, 235, 202, 2, 132],
+      "accounts": [
+        { "name": "team_lead", "signer": true },
+        { "name": "project", "writable": true }
+      ],
+      "args": [{ "name": "policy_hash", "type": { "array": ["u8", 32] } }]
+    },
+    {
+      "name": "deposit",
+      "discriminator": [242, 35, 198, 137, 82, 225, 242, 182],
+      "accounts": [
+        { "name": "depositor", "writable": true, "signer": true },
+        { "name": "project", "writable": true },
+        { "name": "vault_state", "writable": true },
+        { "name": "vault_token_account", "writable": true },
+        { "name": "depositor_token_account", "writable": true },
+        { "name": "token_program", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" }
+      ],
+      "args": [{ "name": "amount", "type": "u64" }]
+    },
+    {
+      "name": "propose_release",
+      "discriminator": [156, 43, 186, 24, 116, 44, 17, 71],
+      "accounts": [
+        { "name": "team_lead", "writable": true, "signer": true },
+        { "name": "project", "writable": true },
+        { "name": "proposal", "writable": true, "signer": false },
+        { "name": "system_program", "address": "11111111111111111111111111111111" }
+      ],
+      "args": [
+        { "name": "amount", "type": "u64" },
+        { "name": "recipient", "type": "pubkey" },
+        { "name": "timelock_duration_secs", "type": "i64" }
+      ]
+    },
+    {
+      "name": "attach_proposal_artifact",
+      "discriminator": [33, 184, 139, 94, 206, 7, 170, 235],
+      "accounts": [
+        { "name": "team_lead", "signer": true },
+        { "name": "project" },
+        { "name": "proposal", "writable": true }
+      ],
+      "args": [
+        { "name": "proposal_id", "type": "u64" },
+        { "name": "artifact_sha256", "type": { "array": ["u8", 32] } },
+        { "name": "uri", "type": { "vec": "u8" } },
+        { "name": "label", "type": { "vec": "u8" } },
+        { "name": "linked_milestone_id", "type": "u64" }
+      ]
+    },
+    {
+      "name": "approve_release",
+      "discriminator": [110, 173, 58, 175, 146, 128, 138, 255],
+      "accounts": [
+        { "name": "approver", "signer": true },
+        { "name": "project" },
+        { "name": "proposal", "writable": true }
+      ],
+      "args": [{ "name": "proposal_id", "type": "u64" }]
+    },
+    {
+      "name": "cancel_proposal",
+      "discriminator": [106, 74, 128, 146, 19, 65, 39, 23],
+      "accounts": [
+        { "name": "team_lead", "signer": true },
+        { "name": "project" },
+        { "name": "proposal", "writable": true }
+      ],
+      "args": [{ "name": "proposal_id", "type": "u64" }]
+    },
+    {
+      "name": "open_dispute",
+      "discriminator": [137, 25, 99, 119, 23, 223, 161, 42],
+      "accounts": [
+        { "name": "opener", "signer": true },
+        { "name": "project" },
+        { "name": "proposal", "writable": true }
+      ],
+      "args": [{ "name": "proposal_id", "type": "u64" }]
+    },
+    {
+      "name": "resolve_dispute",
+      "discriminator": [231, 6, 202, 6, 96, 103, 12, 230],
+      "accounts": [
+        { "name": "team_lead", "signer": true },
+        { "name": "project" },
+        { "name": "proposal", "writable": true }
+      ],
+      "args": [{ "name": "proposal_id", "type": "u64" }]
+    },
+    {
+      "name": "execute_release",
+      "discriminator": [197, 59, 192, 123, 52, 246, 254, 105],
+      "accounts": [
+        { "name": "executor", "signer": true },
+        { "name": "project" },
+        { "name": "vault_state", "writable": true },
+        { "name": "vault_token_account", "writable": true },
+        { "name": "recipient_token_account", "writable": true },
+        { "name": "proposal", "writable": true },
+        { "name": "token_program", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" }
+      ],
+      "args": [{ "name": "proposal_id", "type": "u64" }]
+    },
+    {
+      "name": "set_frozen",
+      "discriminator": [62, 87, 99, 96, 206, 47, 204, 18],
+      "accounts": [
+        { "name": "team_lead", "signer": true },
+        { "name": "project", "writable": true }
+      ],
+      "args": [{ "name": "frozen", "type": "bool" }]
+    },
+    {
+      "name": "set_require_artifact",
+      "discriminator": [77, 177, 60, 243, 111, 115, 115, 183],
+      "accounts": [
+        { "name": "team_lead", "signer": true },
+        { "name": "project", "writable": true }
+      ],
+      "args": [{ "name": "require", "type": "bool" }]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Project",
+      "discriminator": [205, 168, 189, 202, 181, 247, 142, 19]
+    },
+    {
+      "name": "VaultState",
+      "discriminator": [228, 196, 82, 165, 98, 210, 235, 152]
+    },
+    {
+      "name": "ReleaseProposal",
+      "discriminator": [25, 75, 200, 60, 182, 227, 62, 96]
+    }
+  ],
+  "events": [],
+  "errors": [
+    { "code": 6000, "name": "TooManyApprovers", "msg": "Too many approvers (max 5)" },
+    { "code": 6001, "name": "InvalidThreshold", "msg": "Invalid approval threshold" },
+    { "code": 6002, "name": "Unauthorized", "msg": "Unauthorized" },
+    { "code": 6003, "name": "InvalidProposal", "msg": "Invalid proposal" },
+    { "code": 6004, "name": "InvalidProposalState", "msg": "Proposal is not in a valid state for this action" },
+    { "code": 6005, "name": "TimelockNotReady", "msg": "Timelock has not ended yet" },
+    { "code": 6006, "name": "AlreadyExecuted", "msg": "Proposal already executed" },
+    { "code": 6007, "name": "AlreadyApproved", "msg": "Approver already recorded for this proposal" },
+    { "code": 6008, "name": "VaultFrozen", "msg": "Vault is frozen" },
+    { "code": 6009, "name": "InsufficientVaultBalance", "msg": "Insufficient balance in vault token account" },
+    { "code": 6010, "name": "InvalidNameLength", "msg": "Name exceeds max length" },
+    { "code": 6011, "name": "ProposalCancelledErr", "msg": "Proposal cancelled" },
+    { "code": 6012, "name": "InvalidTimelock", "msg": "Invalid timelock configuration" },
+    { "code": 6013, "name": "VaultNotInitialized", "msg": "Vault not initialized" },
+    { "code": 6014, "name": "VaultAlreadyInitialized", "msg": "Vault already initialized" },
+    { "code": 6015, "name": "InvalidMint", "msg": "Invalid mint" },
+    { "code": 6016, "name": "InvalidVault", "msg": "Invalid vault state" },
+    { "code": 6017, "name": "InvalidVaultTokenAccount", "msg": "Vault token account does not match derived ATA" },
+    { "code": 6018, "name": "InvalidAmount", "msg": "Amount must be > 0" },
+    { "code": 6019, "name": "InvalidRecipient", "msg": "Invalid recipient" },
+    { "code": 6020, "name": "InvalidRecipientAta", "msg": "Recipient token account owner mismatch" },
+    { "code": 6021, "name": "LeadMustBeFirstApprover", "msg": "Team lead must be approvers[0]" },
+    { "code": 6022, "name": "DuplicateApprover", "msg": "Duplicate approver" },
+    { "code": 6023, "name": "InvalidApprover", "msg": "Invalid approver pubkey" },
+    { "code": 6024, "name": "ProposalIdOverflow", "msg": "Proposal id overflow" },
+    { "code": 6025, "name": "TimelockOverflow", "msg": "Timelock arithmetic overflow" },
+    { "code": 6026, "name": "PolicyHashZero", "msg": "Policy hash cannot be all zero" },
+    { "code": 6027, "name": "PolicyVersionOverflow", "msg": "Policy version overflow" },
+    { "code": 6028, "name": "ArtifactHashZero", "msg": "Artifact hash cannot be all zero" },
+    { "code": 6029, "name": "ArtifactUriTooLong", "msg": "Artifact URI too long" },
+    { "code": 6030, "name": "ArtifactLabelTooLong", "msg": "Artifact label too long" },
+    { "code": 6031, "name": "ArtifactAlreadyAttached", "msg": "Artifact already attached to this proposal" },
+    { "code": 6032, "name": "DisputeAlreadyOpen", "msg": "A dispute is already open for this proposal" },
+    { "code": 6033, "name": "DisputeNotActive", "msg": "No active dispute on this proposal" },
+    { "code": 6034, "name": "DisputeActive", "msg": "Cannot execute while a dispute is active" },
+    { "code": 6035, "name": "ArtifactRequiredForExecute", "msg": "Project requires an attached artifact before execute" }
+  ],
+  "types": [
+    {
+      "name": "Project",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "team_lead", "type": "pubkey" },
+          { "name": "approver_count", "type": "u8" },
+          { "name": "approvers", "type": { "array": ["pubkey", 5] } },
+          { "name": "approval_threshold", "type": "u8" },
+          { "name": "name", "type": { "array": ["u8", 64] } },
+          { "name": "name_len", "type": "u8" },
+          { "name": "project_id", "type": "u64" },
+          { "name": "next_proposal_id", "type": "u64" },
+          { "name": "frozen", "type": "bool" },
+          { "name": "vault_initialized", "type": "bool" },
+          { "name": "policy_version", "type": "u32" },
+          { "name": "policy_hash", "type": { "array": ["u8", 32] } },
+          { "name": "require_artifact_for_execute", "type": "bool" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "VaultState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "project", "type": "pubkey" },
+          { "name": "mint", "type": "pubkey" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "ReleaseProposal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "project", "type": "pubkey" },
+          { "name": "proposal_id", "type": "u64" },
+          { "name": "amount", "type": "u64" },
+          { "name": "recipient", "type": "pubkey" },
+          { "name": "timelock_duration_secs", "type": "i64" },
+          { "name": "timelock_ends_at", "type": "i64" },
+          { "name": "approved_mask", "type": "u8" },
+          { "name": "status", "type": "u8" },
+          { "name": "policy_version_at_proposal", "type": "u32" },
+          { "name": "artifact_sha256", "type": { "array": ["u8", 32] } },
+          { "name": "artifact_uri", "type": { "array": ["u8", 200] } },
+          { "name": "artifact_uri_len", "type": "u16" },
+          { "name": "artifact_label", "type": { "array": ["u8", 64] } },
+          { "name": "artifact_label_len", "type": "u8" },
+          { "name": "linked_milestone_id", "type": "u64" },
+          { "name": "dispute_active", "type": "bool" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    }
+  ]
+}

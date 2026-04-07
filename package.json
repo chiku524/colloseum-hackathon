@@ -1,0 +1,32 @@
+{
+  "name": "colloseum-hackathon",
+  "private": true,
+  "engines": {
+    "node": ">=18.18"
+  },
+  "scripts": {
+    "copilot:status": "node scripts/solana-idea-spark.mjs status",
+    "ideas:spark": "node scripts/solana-idea-spark.mjs spark",
+    "ideas:gaps": "node scripts/solana-idea-spark.mjs gaps",
+    "ideas:blend": "node scripts/solana-idea-spark.mjs blend",
+    "ideas:cluster": "node scripts/solana-idea-spark.mjs cluster",
+    "test": "anchor test",
+    "build:program": "anchor build",
+    "check:program": "cargo check -p creator-treasury",
+    "prepare:keypair": "node scripts/prepare-program-keypair.mjs",
+    "link:sbf-tools": "node scripts/link-sbf-platform-tools.mjs",
+    "seed:treasury": "node scripts/treasury-seed.mjs"
+  },
+  "devDependencies": {
+    "@coral-xyz/anchor": "0.30.1",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.4",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.30",
+    "chai": "^4.4.1",
+    "mocha": "^10.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

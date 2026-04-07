@@ -1,0 +1,15 @@
+.env
+.env.local
+*.pem
+target/
+.anchor/
+test-ledger/
+dist/
+node_modules/
+apps/web/api/idl.json
+**/*.rs.bk
+.agents/
+.claude/
+skills/
+skills-lock.json
+*.tsbuildinfo
