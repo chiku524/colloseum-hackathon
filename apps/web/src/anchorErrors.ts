@@ -1,53 +1,69 @@
-/** Maps creator-treasury Anchor error codes to short UI copy (IDL 6000–6037). */
+/** Maps creator-treasury Anchor error codes to plain-language UI copy (IDL 6000–6049). */
 
 const BY_CODE: Record<number, string> = {
-  6000: 'Too many approvers (max 5).',
-  6001: 'Invalid approval threshold.',
-  6002: 'Unauthorized — wrong signer or role for this instruction.',
-  6003: 'Invalid proposal.',
-  6004: 'Proposal is not in the right state for this action.',
-  6005: 'Timelock has not ended yet.',
-  6006: 'Proposal was already executed.',
-  6007: 'This approver already signed.',
-  6008: 'Vault is frozen.',
-  6009: 'Insufficient balance in the vault token account.',
-  6010: 'Project name is too long.',
-  6011: 'Proposal was cancelled.',
-  6012: 'Invalid timelock configuration.',
-  6013: 'Vault is not initialized.',
-  6014: 'Vault was already initialized.',
-  6015: 'Mint does not match the vault.',
-  6016: 'Invalid vault state account.',
-  6017: 'Vault token account does not match the derived ATA.',
-  6018: 'Amount must be greater than zero.',
-  6019: 'Invalid recipient.',
-  6020: 'Recipient token account owner or mint mismatch.',
-  6021: 'Team lead must be the first approver.',
-  6022: 'Duplicate approver in the list.',
-  6023: 'Invalid approver pubkey.',
-  6024: 'Proposal id overflow.',
-  6025: 'Timelock arithmetic overflow.',
-  6026: 'Policy hash cannot be all zero.',
-  6027: 'Policy version overflow.',
-  6028: 'Artifact hash cannot be all zero.',
-  6029: 'Artifact URI is too long.',
-  6030: 'Artifact label is too long.',
-  6031: 'Artifact is already attached to this proposal.',
-  6032: 'A dispute is already open for this proposal.',
-  6033: 'No active dispute on this proposal.',
-  6034: 'Cannot execute while a dispute is active.',
-  6035: 'This project requires an attached artifact before execute.',
-  6036: 'Release amount exceeds the remaining approved cap for this proposal.',
-  6037: 'Cannot cancel after funds have already been released from this proposal.',
+  6000: 'You can only list up to five people who can approve payouts.',
+  6001: 'The “how many approvals” number does not match your team setup.',
+  6002: 'This wallet is not allowed to do that step — check you are signed in with the right role.',
+  6003: 'That payout request is missing or does not belong to this project.',
+  6004: 'This action does not match where that payout request is in its lifecycle (e.g. already finished or waiting on something else).',
+  6005: 'The waiting period after approval is not over yet.',
+  6006: 'That payout request has already been fully processed.',
+  6007: 'This wallet already approved this request.',
+  6008: 'Payouts are paused for this vault (emergency stop is on).',
+  6009: 'There is not enough of this token in the vault to cover this action.',
+  6010: 'Team name is too long — shorten it and try again.',
+  6011: 'That payout request was cancelled.',
+  6012: 'The wait-time setting for this request is not valid.',
+  6013: 'The vault is not set up yet — finish vault setup first.',
+  6014: 'The vault is already set up for this project.',
+  6015: 'The token you picked does not match the token this vault uses.',
+  6016: 'Something is wrong with the vault record on-chain.',
+  6017: 'The vault’s token account does not match what the program expects (try refreshing or check the deployment).',
+  6018: 'Enter an amount greater than zero.',
+  6019: 'The recipient wallet address is not valid for this action.',
+  6020: 'The recipient’s token account does not match this coin — they may need the same token in their wallet.',
+  6021: 'The team lead’s wallet must be first in the approver list.',
+  6022: 'The same approver wallet appears more than once.',
+  6023: 'One of the approver wallet addresses is not valid.',
+  6024: 'Too many payout requests for the program counter — contact support if this was unexpected.',
+  6025: 'The wait-time value overflowed — pick a smaller wait time.',
+  6026: 'Rules must have a real fingerprint before saving — try validating again.',
+  6027: 'Rules version overflow — contact support if this was unexpected.',
+  6028: 'Delivery proof fingerprint cannot be empty.',
+  6029: 'The file link is too long.',
+  6030: 'The short label for the proof is too long.',
+  6031: 'A delivery proof is already attached to this payout request.',
+  6032: 'A dispute is already open on this payout request.',
+  6033: 'There is no open dispute on this payout request.',
+  6034: 'You cannot send money on this request while a dispute is open.',
+  6035: 'This team requires a delivery proof before money can be sent.',
+  6036: 'That payment amount is more than what is still allowed on this request.',
+  6037: 'You cannot cancel this request after money has already been sent from it.',
+  6038: 'Project data on-chain looks wrong or outdated for this action — try upgrading layout (Setup) or refreshing.',
+  6039: 'The project number in this action does not match the project you loaded.',
+  6040: 'That automation mode is not supported.',
+  6041: 'Automation wallets or share points are set up incorrectly.',
+  6042: 'Automation can send to at most eight wallets at once.',
+  6043: 'Automation wait time between runs must be greater than zero.',
+  6044: 'When automation is on, the max amount per run must be greater than zero.',
+  6045: 'Automation share points (out of 10,000) are invalid or do not add up correctly.',
+  6046: 'Automatic payouts are not turned on for this project.',
+  6047: 'Automatic payouts are paused — unpause in Setup.',
+  6048: 'It is not time for the next automatic run yet — wait and try again.',
+  6049: 'Extra accounts for automation are missing or in the wrong order (one token account per recipient).',
 };
 
 function tipForCode(code: number): string | undefined {
-  if (code === 6008) return 'Unfreeze the vault in Setup, or wait for the lead.';
-  if (code === 6034) return 'Resolve the dispute (team lead) before executing.';
-  if (code === 6035) return 'Attach a proposal artifact (Proposals tab) with a non-zero SHA-256.';
-  if (code === 6005) return 'Wait until the timelock end time, then try again.';
-  if (code === 6036) return 'Use a smaller tranche or match the remaining cap exactly.';
-  if (code === 6037) return 'Partial releases cannot be rolled back via cancel.';
+  if (code === 6008) return 'Team lead can resume payouts under Setup → Emergency pause.';
+  if (code === 6034) return 'Team lead should close the dispute first (Proposals → Proof & disputes).';
+  if (code === 6035) return 'Add a delivery proof with a real fingerprint on the Proposals tab.';
+  if (code === 6005) return 'Check back after the wait time you set when creating the request.';
+  if (code === 6036) return 'Try a smaller amount or send exactly what is left on the request.';
+  if (code === 6037) return 'If money already moved, cancelling is no longer available.';
+  if (code === 6009) return 'Deposit more tokens, or lower the payout amount.';
+  if (code === 6013) return 'Open Setup and turn the vault on for your token.';
+  if (code === 6020) return 'Recipient may need to receive this token once in their wallet first.';
+  if (code === 6048) return 'Automatic runs respect a schedule — wait for the next eligible time.';
   return undefined;
 }
 
@@ -70,7 +86,7 @@ export function formatTxError(e: unknown): string {
   const hexMatch = raw.match(/custom program error:\s*(0x)?([0-9a-f]+)/i);
   if (hexMatch) {
     const code = parseInt(hexMatch[2], 16);
-    if (code >= 6000 && code <= 6040) {
+    if (code >= 6000 && code <= 6050) {
       const line = BY_CODE[code];
       if (line) {
         const tip = tipForCode(code);
