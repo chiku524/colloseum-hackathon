@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BRAND_NAME } from './brand';
 import {
   WIDGET_CATALOG,
   appOriginPath,
@@ -140,7 +141,9 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
       case 'status_iframe':
         return fullEmbedSrc ? iframeSnippet(fullEmbedSrc, { height: 520 }) : '';
       case 'status_iframe_compact':
-        return compactEmbedSrc ? iframeSnippet(compactEmbedSrc, { height: 160, title: 'Treasury status (compact)' }) : '';
+        return compactEmbedSrc
+          ? iframeSnippet(compactEmbedSrc, { height: 160, title: `${BRAND_NAME} treasury status (compact)` })
+          : '';
       case 'status_link':
         return publicLink;
       case 'project_api':

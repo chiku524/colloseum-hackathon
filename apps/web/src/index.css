@@ -606,15 +606,19 @@ pre.compact-block {
 .brand-mark {
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--accent), #1e4a6e);
-  display: grid;
-  place-items: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #fff;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.brand-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .brand h1 {
@@ -1054,6 +1058,19 @@ code {
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.45rem;
+}
+
+.widget-embed-compact__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.widget-embed-compact__mark {
+  flex-shrink: 0;
+  display: flex;
+  line-height: 0;
 }
 
 .widget-embed-compact__title {

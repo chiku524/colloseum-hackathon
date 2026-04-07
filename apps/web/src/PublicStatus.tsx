@@ -4,6 +4,8 @@ import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { Connection, PublicKey } from '@solana/web3.js';
 import idlJson from '@idl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BRAND_NAME } from './brand';
+import { BrandMark } from './BrandMark';
 import { hex32 } from './policy';
 import {
   WIDGET_BRIDGE_PROTOCOL,
@@ -362,7 +364,10 @@ export function PublicStatus() {
           {state.kind === 'ok' && (
             <div className="widget-embed-compact" aria-label="Treasury status">
               <div className="widget-embed-compact__head">
-                <span className="widget-embed-compact__title">Creator Treasury</span>
+                <div className="widget-embed-compact__brand">
+                  <BrandMark variant="compact" className="widget-embed-compact__mark" />
+                  <span className="widget-embed-compact__title">{BRAND_NAME}</span>
+                </div>
                 <button
                   type="button"
                   className="ghost widget-embed-compact__refresh"
@@ -409,9 +414,14 @@ export function PublicStatus() {
       ) : (
         <>
           <header className="app-header">
-            <div>
-              <h1>Creator treasury — public status</h1>
-              {!displayParams.embed && <p className="muted">Read-only view. No wallet required.</p>}
+            <div className="brand">
+              <BrandMark className="brand-mark" />
+              <div>
+                <h1>
+                  {BRAND_NAME} — public treasury status
+                </h1>
+                {!displayParams.embed && <p className="muted">Read-only view. No wallet required.</p>}
+              </div>
             </div>
             <button type="button" className="ghost" onClick={() => void load()} disabled={state.kind === 'loading'}>
               Refresh

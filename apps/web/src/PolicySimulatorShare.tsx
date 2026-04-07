@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatTxError } from './anchorErrors';
+import { BRAND_NAME } from './brand';
+import { BrandMark } from './BrandMark';
 import {
   decodePolicyFromQueryParam,
   simulatePayout,
@@ -58,9 +60,14 @@ export function PolicySimulatorShare() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div>
-          <h1>Policy payout simulator</h1>
-          <p className="muted">Read-only. Policy is loaded from the URL; no wallet or chain access.</p>
+        <div className="brand">
+          <BrandMark className="brand-mark" />
+          <div>
+            <h1>Policy payout simulator</h1>
+            <p className="muted">
+              {BRAND_NAME} · Read-only. Policy is loaded from the URL; no wallet or chain access.
+            </p>
+          </div>
         </div>
       </header>
 

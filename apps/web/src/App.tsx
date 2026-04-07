@@ -11,6 +11,8 @@ import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import idlJson from '@idl';
 import { formatTxError } from './anchorErrors';
+import { BRAND_NAME, BRAND_TAGLINE } from './brand';
+import { BrandMark } from './BrandMark';
 import { PolicyBuilder } from './PolicyBuilder';
 import {
   canonicalPolicyJson,
@@ -1183,7 +1185,7 @@ export default function App() {
       setErr('Load a project first.');
       return;
     }
-    downloadTextFile(`creator-treasury-proposals-${onChain.onChainProjectId}.csv`, proposalsToCsv(proposals));
+    downloadTextFile(`lithos-proposals-${onChain.onChainProjectId}.csv`, proposalsToCsv(proposals));
     setStatus('Proposal CSV downloaded.');
   };
 
@@ -1209,7 +1211,7 @@ export default function App() {
       vaultBalance: onChain.vaultBalance,
       proposals,
     };
-    downloadJson(`creator-treasury-audit-${onChain.onChainProjectId}.json`, pkg);
+    downloadJson(`lithos-audit-${onChain.onChainProjectId}.json`, pkg);
     setStatus('Audit JSON downloaded.');
   };
 
@@ -1217,14 +1219,10 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark" aria-hidden>
-            CT
-          </span>
+          <BrandMark className="brand-mark" />
           <div>
-            <h1>Creator Treasury</h1>
-            <p className="tagline">
-              Team escrow vault, policy templates, multi-approver releases, artifacts, and disputes — on Solana.
-            </p>
+            <h1>{BRAND_NAME}</h1>
+            <p className="tagline">{BRAND_TAGLINE}</p>
           </div>
         </div>
         <WalletMultiButton />

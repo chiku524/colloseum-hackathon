@@ -6,6 +6,7 @@ import { clusterApiUrl } from '@solana/web3.js';
 import { StrictMode, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { DOCUMENT_TITLES } from './brand';
 import { PolicySimulatorShare } from './PolicySimulatorShare';
 import { PublicStatus } from './PublicStatus';
 import './index.css';
@@ -36,6 +37,11 @@ function entryView(): 'main' | 'status' | 'simulate' {
 }
 
 const view = entryView();
+
+if (typeof document !== 'undefined') {
+  document.title =
+    view === 'status' ? DOCUMENT_TITLES.status : view === 'simulate' ? DOCUMENT_TITLES.simulate : DOCUMENT_TITLES.main;
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

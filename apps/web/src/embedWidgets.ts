@@ -1,7 +1,9 @@
 /**
- * URL builders and copy-paste snippets for embedding Creator Treasury in other apps.
+ * URL builders and copy-paste snippets for embedding Lithos (treasury status) in other apps.
  * See Widget Studio in the main app for interactive configuration.
  */
+
+import { BRAND_NAME } from './brand';
 
 export type StatusUrlOptions = {
   teamLead: string;
@@ -77,7 +79,7 @@ function escapeAttr(s: string): string {
 
 export function iframeSnippet(src: string, opts?: { title?: string; height?: number }): string {
   const h = opts?.height ?? 520;
-  const title = opts?.title ?? 'Creator Treasury status';
+  const title = opts?.title ?? `${BRAND_NAME} treasury status`;
   return `<iframe
   title="${escapeAttr(title)}"
   src="${escapeAttr(src)}"
@@ -105,7 +107,7 @@ export function reactIframeSnippet(src: string, height: number): string {
   return `export function TreasuryStatusEmbed() {
   return (
     <iframe
-      title="Creator Treasury status"
+      title="${BRAND_NAME} treasury status"
       src={${JSON.stringify(src)}}
       width="100%"
       height={${height}}

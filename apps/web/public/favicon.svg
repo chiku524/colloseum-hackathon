@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Lithos">
+  <defs>
+    <linearGradient id="fav-g" x1="4" y1="2" x2="30" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4a9fe8" />
+      <stop offset="0.55" stop-color="#3d8bd4" />
+      <stop offset="1" stop-color="#1e4a6e" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#fav-g)" />
+  <path
+    d="M8 11h16M8 16h16M8 21h10"
+    fill="none"
+    stroke="rgba(0,0,0,0.4)"
+    stroke-width="1.1"
+    stroke-linecap="round"
+  />
+  <circle cx="23" cy="22" r="2.8" fill="#5ee0c8" />
+  <circle cx="23" cy="22" r="1.1" fill="#e8fffa" opacity="0.6" />
+</svg>

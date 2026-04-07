@@ -1,4 +1,4 @@
-# Creator Treasury — Web app (`apps/web`)
+# Lithos — Web app (`apps/web`)
 
 Vite + React dashboard for **team leads** (wallet, projects, vault, policy, releases, audit export) plus **public** views (status, policy simulator). Serverless routes under `api/` deploy on **Vercel** with the static site.
 
