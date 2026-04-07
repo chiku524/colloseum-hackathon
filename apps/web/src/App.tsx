@@ -37,6 +37,7 @@ import {
 } from './auditExport';
 import { mergeSplitsIntoPolicy } from './csvPolicy';
 import { ensureWalletAta, recipientAtaForMint } from './splUtil';
+import { TreasuryAnalytics } from './TreasuryAnalytics';
 
 const idl = idlJson as Idl;
 const PROGRAM_ID = new PublicKey((idlJson as { address: string }).address);
@@ -127,7 +128,12 @@ export default function App() {
     policyHashHex: string;
     vaultInitialized: boolean;
     vaultBalance?: string;
+    /** SPL raw amount string from getTokenAccountBalance (atomic units). */
+    vaultAmountRaw?: string;
+    vaultDecimals: number;
     mint?: string;
+    /** First `approver_count` entries — used to gate treasury analytics. */
+    approverPubkeys: string[];
     nextProposalId: number;
     frozen: boolean;
     requireArtifactForExecute: boolean;
@@ -143,7 +149,25 @@ export default function App() {
   const [artMilestone, setArtMilestone] = useState('0');
   const [csvText, setCsvText] = useState('');
   const [showAdvancedPolicy, setShowAdvancedPolicy] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'setup' | 'policy' | 'ledger'>('overview');
+  const [tab, setTab] = useState<'overview' | 'treasury' | 'setup' | 'policy' | 'ledger'>('overview');
+
+  const [treasuryVisibility, setTreasuryVisibility] = useState<'private' | 'public'>(() => {
+    if (typeof window === 'undefined') return 'private';
+    try {
+      return window.localStorage.getItem('creator-treasury-treasury-visibility') === 'public' ? 'public' : 'private';
+    } catch {
+      return 'private';
+    }
+  });
+
+  const persistTreasuryVisibility = useCallback((v: 'private' | 'public') => {
+    setTreasuryVisibility(v);
+    try {
+      window.localStorage.setItem('creator-treasury-treasury-visibility', v);
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, []);
 
   const [initName, setInitName] = useState('My treasury');
   const [initApproversText, setInitApproversText] = useState('');
@@ -160,6 +184,14 @@ export default function App() {
   const [relAmount, setRelAmount] = useState('100000');
   const [relRecipient, setRelRecipient] = useState('');
   const [relTimelock, setRelTimelock] = useState('0');
+
+  const isProjectApprover = useMemo(() => {
+    if (!wallet.publicKey || !onChain?.approverPubkeys?.length) return false;
+    const me = wallet.publicKey.toBase58();
+    return onChain.approverPubkeys.includes(me);
+  }, [wallet.publicKey, onChain?.approverPubkeys]);
+
+  const canViewTreasuryAnalytics = treasuryVisibility === 'public' || isProjectApprover;
 
   const projectPda = useMemo(() => {
     if (!wallet.publicKey) return null;
@@ -232,6 +264,8 @@ export default function App() {
       }
       const hashHex = hex32(Uint8Array.from(acc.policyHash as number[]));
       let vaultBalance: string | undefined;
+      let vaultAmountRaw: string | undefined;
+      let vaultDecimals = 0;
       let mint: string | undefined;
       if (acc.vaultInitialized) {
         const [vaultState] = PublicKey.findProgramAddressSync(
@@ -244,6 +278,15 @@ export default function App() {
         const ata = getAssociatedTokenAddressSync(vs.mint, vaultState, true);
         const bal = await connection.getTokenAccountBalance(ata);
         vaultBalance = bal.value.uiAmountString ?? bal.value.amount;
+        vaultAmountRaw = bal.value.amount;
+        vaultDecimals = bal.value.decimals;
+      }
+
+      const approverCount = Number(acc.approverCount);
+      const approverList = acc.approvers as PublicKey[];
+      const approverPubkeys: string[] = [];
+      for (let i = 0; i < approverCount && i < approverList.length; i++) {
+        approverPubkeys.push(approverList[i].toBase58());
       }
 
       const nextProp = Number(acc.nextProposalId);
@@ -290,7 +333,10 @@ export default function App() {
         policyHashHex: hashHex,
         vaultInitialized: acc.vaultInitialized as boolean,
         vaultBalance,
+        vaultAmountRaw,
+        vaultDecimals,
         mint,
+        approverPubkeys,
         nextProposalId: nextProp,
         frozen: Boolean(acc.frozen),
         requireArtifactForExecute: Boolean(acc.requireArtifactForExecute),
@@ -1175,6 +1221,9 @@ export default function App() {
         <button type="button" role="tab" aria-selected={tab === 'overview'} onClick={() => setTab('overview')}>
           Overview
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'treasury'} onClick={() => setTab('treasury')}>
+          Treasury
+        </button>
         <button type="button" role="tab" aria-selected={tab === 'setup'} onClick={() => setTab('setup')}>
           Setup
         </button>
@@ -1300,6 +1349,69 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {tab === 'treasury' && (
+        <div className="panel">
+          <h2>Treasury analytics</h2>
+          <p className="muted">
+            Vault balance, committed (unpaid) proposal caps, and cumulative disbursements through{' '}
+            <code>execute_release</code>. Choose who may see these charts in this browser.
+          </p>
+          <div className="treasury-visibility-toggle" role="group" aria-label="Treasury tab visibility">
+            <button
+              type="button"
+              className={treasuryVisibility === 'private' ? 'is-selected' : undefined}
+              aria-pressed={treasuryVisibility === 'private'}
+              onClick={() => persistTreasuryVisibility('private')}
+            >
+              Private
+            </button>
+            <button
+              type="button"
+              className={treasuryVisibility === 'public' ? 'is-selected' : undefined}
+              aria-pressed={treasuryVisibility === 'public'}
+              onClick={() => persistTreasuryVisibility('public')}
+            >
+              Public
+            </button>
+          </div>
+          <p className="muted treasury-visibility-hint">
+            <strong>Private</strong> — only wallets in the on-chain approver list see charts.{' '}
+            <strong>Public</strong> — anyone who can load this project in this session (same wallet + project ID as
+            Overview) sees charts without being an approver. This setting is saved in{' '}
+            <code>localStorage</code> for this origin only; it does not change on-chain permissions.
+          </p>
+          {treasuryVisibility === 'public' && onChain && canViewTreasuryAnalytics && wallet.publicKey && (
+            <p className="treasury-public-banner" role="status">
+              Public view — figures are visible without an approver check. Data still comes from RPC for your loaded
+              project.
+            </p>
+          )}
+          {!wallet.publicKey ? (
+            <p className="muted">Connect your wallet.</p>
+          ) : !onChain ? (
+            <p className="muted">Load the project from Overview first (Refresh on-chain).</p>
+          ) : !canViewTreasuryAnalytics ? (
+            <p className="muted">
+              Your wallet is not an approver for this project. Turn on <strong>Public</strong> above to view analytics
+              anyway in this browser, or connect with an approver wallet.
+            </p>
+          ) : (
+            <TreasuryAnalytics
+              proposals={proposals}
+              vaultInitialized={onChain.vaultInitialized}
+              vaultAmountRaw={onChain.vaultAmountRaw}
+              vaultDecimals={onChain.vaultInitialized ? onChain.vaultDecimals : 6}
+              mint={onChain.mint}
+            />
+          )}
+          <div className="btn-row" style={{ marginTop: '1rem' }}>
+            <button type="button" className="ghost" disabled={busy || !program || !projectPda} onClick={loadOnChain}>
+              {busy ? 'Refreshing…' : 'Refresh figures'}
+            </button>
+          </div>
         </div>
       )}
 
