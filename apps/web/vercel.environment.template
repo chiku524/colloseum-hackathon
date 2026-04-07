@@ -15,7 +15,7 @@ TREASURY_API_SECRET=REPLACE_WITH_LONG_RANDOM_STRING
 JWT_EMBED_SECRET=REPLACE_WITH_DIFFERENT_LONG_RANDOM_MIN_16_CHARS
 WEBHOOK_SIGNING_SECRET=REPLACE_WITH_ANOTHER_LONG_RANDOM_MIN_16_CHARS
 
-# Optional — Vercel Cron → /api/cron/treasury-crank (every 10 min when deployed)
+# Optional — Vercel Cron → /api/cron/treasury-crank (daily 12:00 UTC on Hobby; edit vercel.json for Pro)
 # CRON_SECRET=match Vercel “Cron Secret” if you enable it
 # CRANK_TEAM_LEAD=...   # base58 team lead (same as dashboard)
 # CRANK_PROJECT_ID=0

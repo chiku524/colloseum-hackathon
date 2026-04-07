@@ -16,6 +16,7 @@ function loadIdl(): Idl & { address: string } {
 
 /**
  * Vercel Cron: calls `crank_automation` for one configured project.
+ * Schedule is in `vercel.json` — Hobby allows at most once per day; use a tighter cron on Pro.
  *
  * Env (all required to actually send a tx):
  * - CRANK_TEAM_LEAD, CRANK_PROJECT_ID — same as the team dashboard / public status.
