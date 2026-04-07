@@ -1,6 +1,9 @@
 :root {
   color-scheme: dark;
   --bg: #070a0e;
+  --stone-deep: #06080c;
+  --stone-mid: #0c1018;
+  --stone-vein: #121a24;
   --surface: #0f1419;
   --surface-2: #151c24;
   --border: #243042;
@@ -17,17 +20,86 @@
   --mono: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
 }
 
+html {
+  min-height: 100%;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  position: relative;
   font-family: var(--font);
-  background: var(--bg);
+  background: var(--stone-deep);
   color: var(--text);
   line-height: 1.5;
   min-height: 100vh;
+}
+
+/* Full-page stone + engraved line art (decorative only) */
+.app-engrave-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.app-engrave-stone {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 100% 55% at 15% -5%, rgba(55, 68, 88, 0.22), transparent 52%),
+    radial-gradient(ellipse 80% 50% at 92% 12%, rgba(40, 48, 62, 0.18), transparent 48%),
+    radial-gradient(ellipse 70% 45% at 8% 88%, rgba(35, 42, 54, 0.2), transparent 50%),
+    radial-gradient(ellipse 90% 60% at 78% 96%, rgba(48, 58, 72, 0.15), transparent 55%),
+    linear-gradient(168deg, var(--stone-deep) 0%, var(--stone-mid) 42%, var(--stone-vein) 100%);
+}
+
+.app-engrave-stone::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image: repeating-linear-gradient(
+    -18deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.045) 2px,
+    rgba(0, 0, 0, 0.045) 3px
+  );
+  mix-blend-mode: multiply;
+}
+
+.app-engrave-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+.app-engrave-vein {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+}
+
+.app-engrave-vein__shadow {
+  transform: translate(0.18%, 0.12%);
+}
+
+.app-engrave-vein__branch {
+  opacity: 0.92;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
 }
 
 a {

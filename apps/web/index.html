@@ -6,6 +6,91 @@
     <title>Creator Treasury</title>
   </head>
   <body>
+    <div class="app-engrave-bg" aria-hidden="true">
+      <div class="app-engrave-stone"></div>
+      <div class="app-engrave-grain"></div>
+      <svg
+        class="app-engrave-vein"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 100 280"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id="app-engrave-line" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#8a9aaf" stop-opacity="0.14" />
+            <stop offset="35%" stop-color="#c5d0e0" stop-opacity="0.22" />
+            <stop offset="70%" stop-color="#6a7688" stop-opacity="0.12" />
+            <stop offset="100%" stop-color="#9aa8bc" stop-opacity="0.16" />
+          </linearGradient>
+          <filter id="app-engrave-soft" x="-5%" y="-5%" width="110%" height="110%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0.25" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <!-- Groove shadow + highlight (carved-in look) -->
+        <path
+          class="app-engrave-vein__shadow"
+          fill="none"
+          stroke="rgba(0, 0, 0, 0.45)"
+          stroke-width="0.85"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M 8 0 C 22 38 42 18 52 52 C 62 86 28 98 68 128 C 92 148 36 168 88 188 C 98 208 48 222 78 242 C 88 258 32 268 12 280"
+        />
+        <path
+          class="app-engrave-vein__line"
+          fill="none"
+          stroke="url(#app-engrave-line)"
+          stroke-width="0.45"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          filter="url(#app-engrave-soft)"
+          d="M 8 0 C 22 38 42 18 52 52 C 62 86 28 98 68 128 C 92 148 36 168 88 188 C 98 208 48 222 78 242 C 88 258 32 268 12 280"
+        />
+        <!-- Abstract nodes — same continuous network -->
+        <g class="app-engrave-nodes" fill="none" stroke-linecap="round">
+          <circle cx="8" cy="0" r="2.2" stroke="rgba(0,0,0,0.5)" stroke-width="0.5" />
+          <circle cx="8" cy="0" r="2.2" stroke="rgba(255,255,255,0.07)" stroke-width="0.25" transform="translate(-0.12 -0.12)" />
+          <circle cx="52" cy="52" r="1.8" stroke="rgba(0,0,0,0.45)" stroke-width="0.45" />
+          <circle cx="52" cy="52" r="1.8" stroke="rgba(255,255,255,0.06)" stroke-width="0.2" transform="translate(-0.1 -0.1)" />
+          <circle cx="68" cy="128" r="2" stroke="rgba(0,0,0,0.48)" stroke-width="0.48" />
+          <circle cx="68" cy="128" r="2" stroke="rgba(255,255,255,0.07)" stroke-width="0.22" transform="translate(-0.1 -0.1)" />
+          <circle cx="88" cy="188" r="1.6" stroke="rgba(0,0,0,0.42)" stroke-width="0.42" />
+          <circle cx="88" cy="188" r="1.6" stroke="rgba(255,255,255,0.05)" stroke-width="0.18" transform="translate(-0.08 -0.08)" />
+          <circle cx="78" cy="242" r="1.7" stroke="rgba(0,0,0,0.44)" stroke-width="0.44" />
+          <circle cx="78" cy="242" r="1.7" stroke="rgba(255,255,255,0.06)" stroke-width="0.2" transform="translate(-0.09 -0.09)" />
+          <circle cx="12" cy="280" r="2.1" stroke="rgba(0,0,0,0.5)" stroke-width="0.5" />
+          <circle cx="12" cy="280" r="2.1" stroke="rgba(255,255,255,0.07)" stroke-width="0.24" transform="translate(-0.11 -0.11)" />
+        </g>
+        <!-- Branch lines — still one connected graph -->
+        <path
+          class="app-engrave-vein__shadow app-engrave-vein__branch"
+          fill="none"
+          stroke="rgba(0, 0, 0, 0.35)"
+          stroke-width="0.65"
+          stroke-linecap="round"
+          d="M 52 52 C 72 58 82 72 94 68 M 68 128 C 58 142 52 162 44 178 M 88 188 C 72 198 58 212 48 228"
+        />
+        <path
+          class="app-engrave-vein__line app-engrave-vein__branch"
+          fill="none"
+          stroke="url(#app-engrave-line)"
+          stroke-width="0.35"
+          stroke-linecap="round"
+          opacity="0.85"
+          d="M 52 52 C 72 58 82 72 94 68 M 68 128 C 58 142 52 162 44 178 M 88 188 C 72 198 58 212 48 228"
+        />
+        <circle cx="94" cy="68" r="1.35" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="0.4" />
+        <circle cx="94" cy="68" r="1.35" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.16" transform="translate(-0.06 -0.06)" />
+        <circle cx="44" cy="178" r="1.25" fill="none" stroke="rgba(0,0,0,0.38)" stroke-width="0.38" />
+        <circle cx="44" cy="178" r="1.25" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.15" transform="translate(-0.06 -0.06)" />
+        <circle cx="48" cy="228" r="1.2" fill="none" stroke="rgba(0,0,0,0.36)" stroke-width="0.36" />
+        <circle cx="48" cy="228" r="1.2" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.14" transform="translate(-0.05 -0.05)" />
+      </svg>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
