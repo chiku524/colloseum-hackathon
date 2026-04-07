@@ -1,5 +1,5 @@
 /**
- * URL builders and copy-paste snippets for embedding Vault (treasury status) in other apps.
+ * URL builders and copy-paste snippets for embedding Stronghold (treasury status) in other apps.
  * See Widget Studio in the main app for interactive configuration.
  */
 
@@ -136,7 +136,7 @@ export const WIDGET_CATALOG = [
   {
     id: 'status_iframe_compact',
     label: 'Status — compact iframe',
-    hint: 'Height ~160px. Vault + key counts only; best for footers and sidebars.',
+    hint: 'Height ~160px. Vault balance & key counts only; best for footers and sidebars.',
   },
   {
     id: 'status_link',

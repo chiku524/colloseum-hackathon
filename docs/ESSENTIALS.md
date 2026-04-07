@@ -1,4 +1,4 @@
-# Creator Team Treasury (Vault) — Essentials
+# Creator Team Treasury (Stronghold) — Essentials
 
 This document explains **what the system is for**, **who uses it**, and **what you must know** to run it safely and effectively. It complements the phased roadmap in `[CREATOR-TREASURY-BUILD-PLAN.md](./CREATOR-TREASURY-BUILD-PLAN.md)`, the on-chain rules in `[INVARIANTS-PHASE-A.md](./INVARIANTS-PHASE-A.md)`, and the security/embed contract in `[SECURITY-AND-EMBED.md](./SECURITY-AND-EMBED.md)`.
 

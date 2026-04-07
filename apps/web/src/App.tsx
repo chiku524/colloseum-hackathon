@@ -1185,7 +1185,7 @@ export default function App() {
       setErr('Load a project first.');
       return;
     }
-    downloadTextFile(`vault-proposals-${onChain.onChainProjectId}.csv`, proposalsToCsv(proposals));
+    downloadTextFile(`stronghold-proposals-${onChain.onChainProjectId}.csv`, proposalsToCsv(proposals));
     setStatus('Proposal CSV downloaded.');
   };
 
@@ -1211,7 +1211,7 @@ export default function App() {
       vaultBalance: onChain.vaultBalance,
       proposals,
     };
-    downloadJson(`vault-audit-${onChain.onChainProjectId}.json`, pkg);
+    downloadJson(`stronghold-audit-${onChain.onChainProjectId}.json`, pkg);
     setStatus('Audit JSON downloaded.');
   };
 
