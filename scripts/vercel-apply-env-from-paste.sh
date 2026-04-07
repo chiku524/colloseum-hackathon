@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Push variables from apps/web/.env.vercel.paste to Vercel (production, preview, development).
-# Requires: cd apps/web && vercel link   (once)
+# Requires: .vercel/project.json at repo root (see README). Run vercel CLI from ROOT, not apps/web.
 # Usage (from repo root): bash scripts/vercel-apply-env-from-paste.sh
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FILE="${ROOT}/apps/web/.env.vercel.paste"
-cd "${ROOT}/apps/web"
+cd "${ROOT}"
 
 if [[ ! -f "$FILE" ]]; then
   echo "Missing $FILE — run: npm run vercel:generate-env"

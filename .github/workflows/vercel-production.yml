@@ -1,6 +1,7 @@
 # Deploy apps/web to Vercel production when main updates.
 # Requires repository secret: VERCEL_TOKEN_HACKATHON (Vercel account token with deploy access).
-# Project link: apps/web/.vercel/project.json (orgId + projectId).
+# Project link: .vercel/project.json at repo root. Vercel dashboard Root Directory must stay "apps/web";
+# do not pass --cwd apps/web here or the path is doubled (apps/web/apps/web).
 
 name: Vercel Production
 
@@ -26,4 +27,4 @@ jobs:
       - name: Deploy to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_HACKATHON }}
-        run: npx vercel@latest deploy --prod --yes --cwd apps/web --token "$VERCEL_TOKEN"
+        run: npx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
