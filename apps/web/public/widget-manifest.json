@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "protocol_version": "1",
+  "name": "creator-treasury-widgets",
+  "description": "Embeddable read-only treasury status widgets and parent-page integration for Creator Treasury deployments. Human checklist: docs/HOST-WIDGET-INTEGRATION.md in the repo.",
+  "manifest_url_path": "/widget-manifest.json",
+  "widgets": [
+    {
+      "id": "status_iframe_full",
+      "label": "Full status (iframe)",
+      "required_query_params": ["view=status", "embed=1"],
+      "recommended_iframe_height_px": 520,
+      "optional_query_params": [
+        "team_lead",
+        "project_id",
+        "token",
+        "rpc",
+        "parent_origin",
+        "compact"
+      ],
+      "notes": "Use token= instead of team_lead/project_id when using POST /api/v1/embed-token."
+    },
+    {
+      "id": "status_iframe_compact",
+      "label": "Compact status (iframe)",
+      "required_query_params": ["view=status", "embed=1", "compact=1"],
+      "recommended_iframe_height_px": 160,
+      "optional_query_params": ["team_lead", "project_id", "token", "rpc", "parent_origin"],
+      "notes": "Minimal KPI strip for sidebars and footers."
+    },
+    {
+      "id": "project_snapshot_api",
+      "label": "Project JSON API",
+      "path": "/api/v1/project",
+      "method": "GET",
+      "optional_query_params": ["team_lead", "project_id", "token", "rpc"],
+      "notes": "Same payload shape the status page consumes; CORS enabled on deployed API."
+    }
+  ],
+  "post_message": {
+    "source_field": "source",
+    "source_value": "creator-treasury-widget",
+    "protocol_field": "protocol",
+    "parent_origin_query_param": "parent_origin",
+    "parent_origin_format": "Percent-encoded origin only, e.g. https%3A%2F%2Fmyapp.com — no path, query, or fragment.",
+    "requires_embed": true,
+    "security_notes": [
+      "Messages are only posted when embed=1 and parent_origin parses to an allowed origin.",
+      "The iframe only sends to the exact origin given in parent_origin (never \"*\").",
+      "Payloads mirror public status data; never include wallet keys or API secrets."
+    ],
+    "events": [
+      {
+        "type": "ready",
+        "description": "Bridge initialized after load. Parent can show a placeholder until snapshot."
+      },
+      {
+        "type": "loading",
+        "description": "A refresh started (initial load or user/agent refresh)."
+      },
+      {
+        "type": "error",
+        "description": "Load failed; includes a short message string safe for UI."
+      },
+      {
+        "type": "snapshot",
+        "description": "Treasury snapshot available; includes counts and vault summary fields."
+      }
+    ],
+    "snapshot_payload_fields": [
+      "projectPda",
+      "projectId",
+      "teamLeadPreview",
+      "policyVersion",
+      "policyHashHex",
+      "frozen",
+      "vaultInitialized",
+      "vaultBalance",
+      "mintPreview",
+      "proposalCount",
+      "pendingProposalCount",
+      "activeDisputeCount",
+      "compactLayout"
+    ]
+  }
+}

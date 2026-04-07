@@ -16,8 +16,9 @@ This complements `docs/CREATOR-TREASURY-BUILD-PLAN.md` (Phase E widgets) with wh
 | `?view=status&team_lead=<pk>&project_id=<u64>` | Read project + proposals from chain. |
 | `&rpc=<https://…>` | Optional RPC override (also `VITE_RPC_URL` in the main bundle). |
 | `&embed=1` | Minimal chrome for iframes: hides the “URL parameters” explainer panel and tightens padding. |
+| `&parent_origin=<encoded origin>` | With `embed=1`, enables `postMessage` from the iframe to the parent at that origin only. See **[`HOST-WIDGET-INTEGRATION.md`](./HOST-WIDGET-INTEGRATION.md)** and **`/widget-manifest.json`**. |
 
-**Iframe guidance:** Prefer `embed=1` on status links. Do not put privileged keys inside embedded pages. For production, plan an allowlist of `frame-ancestors` / CSP on your host and (later) short-lived read tokens as described in the build plan.
+**Iframe guidance:** Prefer `embed=1` on status links. Do not put privileged keys inside embedded pages. For production, plan an allowlist of `frame-ancestors` / CSP on your host and (later) short-lived read tokens as described in the build plan. For parent-page `postMessage` setup, use **[`HOST-WIDGET-INTEGRATION.md`](./HOST-WIDGET-INTEGRATION.md)**.
 
 ## Policy simulator share link
 

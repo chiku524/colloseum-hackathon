@@ -38,6 +38,7 @@ import {
 import { mergeSplitsIntoPolicy } from './csvPolicy';
 import { ensureWalletAta, recipientAtaForMint } from './splUtil';
 import { TreasuryAnalytics } from './TreasuryAnalytics';
+import { WidgetStudio } from './WidgetStudio';
 
 const idl = idlJson as Idl;
 const PROGRAM_ID = new PublicKey((idlJson as { address: string }).address);
@@ -149,7 +150,7 @@ export default function App() {
   const [artMilestone, setArtMilestone] = useState('0');
   const [csvText, setCsvText] = useState('');
   const [showAdvancedPolicy, setShowAdvancedPolicy] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'treasury' | 'setup' | 'policy' | 'ledger'>('overview');
+  const [tab, setTab] = useState<'overview' | 'treasury' | 'setup' | 'policy' | 'ledger' | 'widgets'>('overview');
 
   const [treasuryVisibility, setTreasuryVisibility] = useState<'private' | 'public'>(() => {
     if (typeof window === 'undefined') return 'private';
@@ -227,6 +228,18 @@ export default function App() {
   const publicEmbedStatusUrl = useMemo(
     () => (publicStatusUrl ? `${publicStatusUrl}&embed=1` : ''),
     [publicStatusUrl],
+  );
+
+  const widgetProjectDefaults = useMemo(
+    () =>
+      onChain
+        ? {
+            teamLead: onChain.teamLead,
+            projectId: onChain.onChainProjectId,
+            rpc: import.meta.env.VITE_RPC_URL,
+          }
+        : null,
+    [onChain],
   );
 
   useEffect(() => {
@@ -1233,6 +1246,9 @@ export default function App() {
         <button type="button" role="tab" aria-selected={tab === 'ledger'} onClick={() => setTab('ledger')}>
           Proposals
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'widgets'} onClick={() => setTab('widgets')}>
+          Widgets
+        </button>
       </nav>
 
       {tab === 'overview' && (
@@ -1905,6 +1921,21 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
             </div>
           </div>
         </>
+      )}
+
+      {tab === 'widgets' && (
+        <WidgetStudio
+          projectDefaults={widgetProjectDefaults}
+          policyText={policyText}
+          onCopySuccess={(msg) => {
+            setErr(null);
+            setStatus(msg);
+          }}
+          onCopyError={(msg) => {
+            setStatus(null);
+            setErr(msg);
+          }}
+        />
       )}
 
       <div className="toast-area">

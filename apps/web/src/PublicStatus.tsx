@@ -5,6 +5,13 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import idlJson from '@idl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { hex32 } from './policy';
+import {
+  WIDGET_BRIDGE_PROTOCOL,
+  WIDGET_BRIDGE_SOURCE,
+  buildWidgetSnapshotPayload,
+  parseAllowedParentOrigin,
+  postWidgetBridgeMessage,
+} from './widgetBridge';
 
 const idl = idlJson as Idl;
 const PROGRAM_ID = new PublicKey(
@@ -62,13 +69,25 @@ type LoadState =
       rpcUsed?: string;
     };
 
-function readParams(): { teamLead: string; projectId: string; rpc: string | null; token: string | null } {
+function readParams(): {
+  teamLead: string;
+  projectId: string;
+  rpc: string | null;
+  token: string | null;
+  embed: boolean;
+  compact: boolean;
+  /** Raw query value (may be percent-encoded). */
+  parentOrigin: string | null;
+} {
   const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   return {
     teamLead: sp.get('team_lead') ?? sp.get('teamLead') ?? '',
     projectId: sp.get('project_id') ?? sp.get('projectId') ?? '',
     rpc: sp.get('rpc'),
     token: sp.get('token'),
+    embed: sp.get('embed') === '1',
+    compact: sp.get('compact') === '1',
+    parentOrigin: sp.get('parent_origin'),
   };
 }
 
@@ -85,10 +104,6 @@ function readOnlyProvider(connection: Connection): AnchorProvider {
 }
 
 export function PublicStatus() {
-  const embed = useMemo(
-    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === '1',
-    [],
-  );
   const displayParams = readParams();
   const defaultRpc =
     displayParams.rpc?.trim() || import.meta.env.VITE_RPC_URL || 'https://api.devnet.solana.com';
@@ -288,43 +303,149 @@ export function PublicStatus() {
     void load();
   }, [load]);
 
-  return (
-    <div className={embed ? 'app-shell app-shell--embed' : 'app-shell'}>
-      <header className="app-header">
-        <div>
-          <h1>Creator treasury — public status</h1>
-          {!embed && <p className="muted">Read-only view. No wallet required.</p>}
-        </div>
-        <button type="button" className="ghost" onClick={() => void load()} disabled={state.kind === 'loading'}>
-          Refresh
-        </button>
-      </header>
+  const bridgeTargetOrigin = useMemo(() => {
+    if (!displayParams.embed) return null;
+    return parseAllowedParentOrigin(displayParams.parentOrigin);
+  }, [displayParams.embed, displayParams.parentOrigin]);
 
-      <div className={embed ? 'panel app-shell__embed-hide' : 'panel'}>
-        <h2>URL parameters</h2>
-        <p className="muted">
-          <code>?view=status&amp;team_lead=&lt;pubkey&gt;&amp;project_id=&lt;u64&gt;</code> — optional{' '}
-          <code>&amp;rpc=&lt;https endpoint&gt;</code> — or <code>&amp;token=&lt;JWT&gt;</code> from{' '}
-          <code>POST /api/v1/embed-token</code>. On Vercel, data is fetched via <code>/api/v1/project</code> first.
-        </p>
-        <pre className="compact-block">
-          {`team_lead: ${displayParams.teamLead || '(missing)'}
+  useEffect(() => {
+    if (!bridgeTargetOrigin) return;
+    postWidgetBridgeMessage(bridgeTargetOrigin, {
+      source: WIDGET_BRIDGE_SOURCE,
+      protocol: WIDGET_BRIDGE_PROTOCOL,
+      type: 'ready',
+      compact: displayParams.compact,
+    });
+  }, [bridgeTargetOrigin, displayParams.compact]);
+
+  useEffect(() => {
+    if (!bridgeTargetOrigin) return;
+    if (state.kind === 'idle') return;
+    if (state.kind === 'loading') {
+      postWidgetBridgeMessage(bridgeTargetOrigin, {
+        source: WIDGET_BRIDGE_SOURCE,
+        protocol: WIDGET_BRIDGE_PROTOCOL,
+        type: 'loading',
+      });
+      return;
+    }
+    if (state.kind === 'error') {
+      postWidgetBridgeMessage(bridgeTargetOrigin, {
+        source: WIDGET_BRIDGE_SOURCE,
+        protocol: WIDGET_BRIDGE_PROTOCOL,
+        type: 'error',
+        message: state.message,
+      });
+      return;
+    }
+    postWidgetBridgeMessage(bridgeTargetOrigin, {
+      source: WIDGET_BRIDGE_SOURCE,
+      protocol: WIDGET_BRIDGE_PROTOCOL,
+      type: 'snapshot',
+      payload: buildWidgetSnapshotPayload(state, displayParams.compact),
+    });
+  }, [state, bridgeTargetOrigin, displayParams.compact]);
+
+  const shellClass = ['app-shell', displayParams.embed && 'app-shell--embed', displayParams.compact && 'app-shell--embed-compact']
+    .filter(Boolean)
+    .join(' ');
+
+  const pendingCount = state.kind === 'ok' ? state.proposals.filter((p) => p.statusCode < 2).length : 0;
+  const disputeCount = state.kind === 'ok' ? state.proposals.filter((p) => p.disputeActive).length : 0;
+
+  return (
+    <div className={shellClass}>
+      {displayParams.compact ? (
+        <>
+          {state.kind === 'loading' && <p className="muted widget-embed-compact__pad">Loading…</p>}
+          {state.kind === 'error' && <p className="error widget-embed-compact__pad">{state.message}</p>}
+          {state.kind === 'ok' && (
+            <div className="widget-embed-compact" aria-label="Treasury status">
+              <div className="widget-embed-compact__head">
+                <span className="widget-embed-compact__title">Creator Treasury</span>
+                <button
+                  type="button"
+                  className="ghost widget-embed-compact__refresh"
+                  onClick={() => void load()}
+                  aria-label="Refresh status"
+                >
+                  Refresh
+                </button>
+              </div>
+              <div className="widget-embed-compact__kpis">
+                <div className="widget-embed-compact__kpi">
+                  <span className="widget-embed-compact__kpi-label">Vault</span>
+                  <span className="widget-embed-compact__kpi-value">{state.vaultBalance ?? '—'}</span>
+                </div>
+                <div className="widget-embed-compact__kpi">
+                  <span className="widget-embed-compact__kpi-label">Policy</span>
+                  <span className="widget-embed-compact__kpi-value">v{state.policyVersion}</span>
+                </div>
+                <div className="widget-embed-compact__kpi">
+                  <span className="widget-embed-compact__kpi-label">Proposals</span>
+                  <span className="widget-embed-compact__kpi-value">{state.proposals.length}</span>
+                </div>
+                <div className="widget-embed-compact__kpi">
+                  <span className="widget-embed-compact__kpi-label">Open</span>
+                  <span className="widget-embed-compact__kpi-value">{pendingCount}</span>
+                </div>
+                <div className="widget-embed-compact__kpi">
+                  <span className="widget-embed-compact__kpi-label">Frozen</span>
+                  <span className="widget-embed-compact__kpi-value">{state.frozen ? 'Yes' : 'No'}</span>
+                </div>
+                {disputeCount > 0 && (
+                  <div className="widget-embed-compact__kpi widget-embed-compact__kpi--alert">
+                    <span className="widget-embed-compact__kpi-label">Disputes</span>
+                    <span className="widget-embed-compact__kpi-value">{disputeCount}</span>
+                  </div>
+                )}
+              </div>
+              <p className="widget-embed-compact__foot muted">
+                Project #{state.projectId} · {shortAddr(state.teamLead, 4, 4)}
+              </p>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <header className="app-header">
+            <div>
+              <h1>Creator treasury — public status</h1>
+              {!displayParams.embed && <p className="muted">Read-only view. No wallet required.</p>}
+            </div>
+            <button type="button" className="ghost" onClick={() => void load()} disabled={state.kind === 'loading'}>
+              Refresh
+            </button>
+          </header>
+
+          <div className={displayParams.embed ? 'panel app-shell__embed-hide' : 'panel'}>
+            <h2>URL parameters</h2>
+            <p className="muted">
+              <code>?view=status&amp;team_lead=&lt;pubkey&gt;&amp;project_id=&lt;u64&gt;</code> — optional{' '}
+              <code>&amp;rpc=&lt;https endpoint&gt;</code> — or <code>&amp;token=&lt;JWT&gt;</code> from{' '}
+              <code>POST /api/v1/embed-token</code>. On Vercel, data is fetched via <code>/api/v1/project</code> first.
+              Add <code>&amp;embed=1&amp;compact=1</code> for a minimal iframe widget. With <code>&amp;embed=1</code>, optional{' '}
+              <code>&amp;parent_origin=&lt;encoded origin&gt;</code> enables <code>postMessage</code> to the parent (see{' '}
+              <code>/widget-manifest.json</code>).
+            </p>
+            <pre className="compact-block">
+              {`team_lead: ${displayParams.teamLead || '(missing)'}
 project_id: ${displayParams.projectId || '(missing)'}
 token: ${displayParams.token ? '(present)' : '(none)'}
 rpc: ${defaultRpc}`}
-        </pre>
-      </div>
+            </pre>
+          </div>
 
-      {state.kind === 'loading' && <p className="muted">Loading…</p>}
+          {state.kind === 'loading' && <p className="muted">Loading…</p>}
 
-      {state.kind === 'error' && <p className="error">{state.message}</p>}
+          {state.kind === 'error' && <p className="error">{state.message}</p>}
 
-      {state.kind === 'ok' && (
-        <>
-          <div className="panel">
-            <h2>Project</h2>
-            <pre className="compact-block">
-              {`PDA: ${state.projectPda}
+          {state.kind === 'ok' && (
+            <>
+              <div className="panel">
+                <h2>Project</h2>
+                <pre className="compact-block">
+                  {`PDA: ${state.projectPda}
 team_lead: ${shortAddr(state.teamLead, 8, 8)}
 on-chain project_id: ${state.projectId}
 policy_version: ${state.policyVersion}
@@ -335,28 +456,30 @@ vault_initialized: ${state.vaultInitialized}
 mint: ${state.mint ? shortAddr(state.mint, 8, 8) : '—'}
 vault_balance: ${state.vaultBalance ?? '—'}
 rpc (read): ${state.rpcUsed ?? 'client'}`}
-            </pre>
-          </div>
-
-          {state.proposals.length > 0 && (
-            <div className="panel">
-              <h2>Proposals</h2>
-              <div className="proposal-list" aria-label="Proposals">
-                {state.proposals.map((p) => (
-                  <div key={p.proposalId} className="proposal-card">
-                    <div className="proposal-card-top">
-                      <span className={badgeClassForStatus(p.statusCode)}>{p.status}</span>
-                      <span className="proposal-meta">Proposal #{p.proposalId}</span>
-                    </div>
-                    <div className="proposal-meta">
-                      cap {p.amount} · released {p.releasedSoFar} · remaining {p.amountRemaining} → {shortAddr(p.recipient)} ·
-                      artifact {shortAddr(p.artifactSha256Hex, 6, 6)}
-                      {p.disputeActive ? ' · dispute' : ''}
-                    </div>
-                  </div>
-                ))}
+                </pre>
               </div>
-            </div>
+
+              {state.proposals.length > 0 && (
+                <div className="panel">
+                  <h2>Proposals</h2>
+                  <div className="proposal-list" aria-label="Proposals">
+                    {state.proposals.map((p) => (
+                      <div key={p.proposalId} className="proposal-card">
+                        <div className="proposal-card-top">
+                          <span className={badgeClassForStatus(p.statusCode)}>{p.status}</span>
+                          <span className="proposal-meta">Proposal #{p.proposalId}</span>
+                        </div>
+                        <div className="proposal-meta">
+                          cap {p.amount} · released {p.releasedSoFar} · remaining {p.amountRemaining} →{' '}
+                          {shortAddr(p.recipient)} · artifact {shortAddr(p.artifactSha256Hex, 6, 6)}
+                          {p.disputeActive ? ' · dispute' : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

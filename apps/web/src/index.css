@@ -1029,3 +1029,227 @@ code {
 .split-editor__bps {
   width: 5rem;
 }
+
+/* Embed widgets (PublicStatus compact) */
+.app-shell--embed-compact {
+  padding: 0.35rem 0.5rem 0.5rem;
+  max-width: 100%;
+}
+
+.widget-embed-compact__pad {
+  margin: 0.35rem 0.25rem;
+  font-size: 0.88rem;
+}
+
+.widget-embed-compact {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.65rem;
+}
+
+.widget-embed-compact__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.widget-embed-compact__title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.widget-embed-compact__refresh {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.5rem;
+}
+
+.widget-embed-compact__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.35rem 0.5rem;
+}
+
+.widget-embed-compact__kpi {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 0.3rem 0.4rem;
+  min-width: 0;
+}
+
+.widget-embed-compact__kpi--alert {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border-subtle));
+}
+
+.widget-embed-compact__kpi-label {
+  display: block;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.12rem;
+}
+
+.widget-embed-compact__kpi-value {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  word-break: break-all;
+  line-height: 1.25;
+}
+
+.widget-embed-compact__foot {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+}
+
+/* Widget studio (main app) */
+.widget-studio__fields {
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.widget-studio__kind {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 1rem 0;
+}
+
+.widget-studio__kind-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.55rem;
+  row-gap: 0.1rem;
+  align-items: start;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.widget-studio__kind-option.is-selected {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.widget-studio__kind-option input {
+  margin-top: 0.2rem;
+  grid-row: 1 / span 2;
+}
+
+.widget-studio__kind-option:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.widget-studio__kind-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.widget-studio__kind-hint {
+  grid-column: 2;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.widget-studio__api-meta {
+  font-size: 0.82rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.widget-studio__snippet {
+  font-size: 0.78rem;
+  max-height: 22rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.widget-studio__preview {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.widget-studio__preview h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.widget-studio__preview-frame-wrap {
+  margin-top: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--stone-deep);
+}
+
+.widget-studio__preview-frame {
+  display: block;
+  width: 100%;
+  height: 280px;
+  border: 0;
+}
+
+.widget-studio__manifest {
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.widget-studio__manifest-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.widget-studio__manifest-events {
+  margin: 0.5rem 0 0;
+  padding-left: 1.15rem;
+  font-size: 0.82rem;
+}
+
+.widget-studio__manifest-events li {
+  margin-bottom: 0.25rem;
+}
+
+.widget-studio__host-guide {
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.widget-studio__host-steps {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.widget-studio__host-steps li {
+  margin-bottom: 0.5rem;
+}
+
+.widget-studio__host-steps li:last-child {
+  margin-bottom: 0;
+}
+
+.widget-studio__debug-toggle {
+  margin: 0.5rem 0 0.65rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
