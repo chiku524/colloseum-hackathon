@@ -12,7 +12,7 @@ import {
 function readPolicyFromUrl(): { policy: TreasuryPolicy | null; error: string | null } {
   const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const p = sp.get('p');
-  if (!p) return { policy: null, error: 'Missing query parameter p= (base64-encoded policy JSON).' };
+  if (!p) return { policy: null, error: 'This link is missing the rules payload (the p= part). Ask whoever shared it to copy the full URL.' };
   try {
     return { policy: decodePolicyFromQueryParam(p), error: null };
   } catch (e) {
@@ -44,13 +44,13 @@ export function PolicySimulatorShare() {
       }
       const atoms = BigInt(depositSim);
       if (atoms <= 0n) {
-        setErr('Deposit must be a positive integer (token smallest units).');
+        setErr('Enter a sample deposit greater than zero (smallest units of the token).');
         return;
       }
       const { lines, holdback, remainder } = simulatePayout(atoms, policy);
       const rows = lines.map((l) => `${l.payee}: ${l.amount.toString()}`).join('\n');
       setStatus(
-        `Simulated (atomic units):\nholdback: ${holdback}\n${rows}\nremainder (stays in vault math): ${remainder}`,
+        `Practice run (smallest units):\nHold back: ${holdback}\n${rows}\nLeft in vault after splits: ${remainder}`,
       );
     } catch (e) {
       setErr(formatTxError(e));
@@ -63,9 +63,9 @@ export function PolicySimulatorShare() {
         <div className="brand">
           <BrandMark className="brand-mark" />
           <div>
-            <h1>Policy payout simulator</h1>
+            <h1>Payout “what if” calculator</h1>
             <p className="muted">
-              {BRAND_NAME} · Read-only. Policy is loaded from the URL; no wallet or chain access.
+              {BRAND_NAME} · Read-only practice calculator. Rules load from the link — no wallet or blockchain access.
             </p>
           </div>
         </div>
@@ -73,15 +73,15 @@ export function PolicySimulatorShare() {
 
       {policy && (
         <div className="panel">
-          <h2>Loaded policy</h2>
+          <h2>Rules from the link</h2>
           <pre className="data-block">{JSON.stringify(policy, null, 2)}</pre>
           <div className="field-row" style={{ marginTop: '0.75rem' }}>
             <div className="field">
-              <label htmlFor="sim-dep">Deposit (smallest units)</label>
+              <label htmlFor="sim-dep">Sample deposit (smallest units)</label>
               <input id="sim-dep" type="text" value={depositSim} onChange={(e) => setDepositSim(e.target.value)} />
             </div>
             <button type="button" className="ghost" style={{ alignSelf: 'flex-end' }} onClick={onSimulate}>
-              Simulate
+              Run sample
             </button>
           </div>
         </div>

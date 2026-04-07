@@ -204,10 +204,10 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
 
   return (
     <div className="panel widget-studio">
-      <h2>Widget studio</h2>
+      <h2>Share & embed</h2>
       <p className="muted">
-        Build embeddable status views and API links for your own sites and tools. For private dashboards, mint a short-lived
-        JWT with <code>POST /api/v1/embed-token</code> (server secret) and paste it below so URLs stay free of pubkeys.
+        Copy ready-made links or code snippets for your own website or tools. For private dashboards, your backend can mint a
+        short-lived token with <code>POST /api/v1/embed-token</code> — paste it below so links never expose wallet addresses.
       </p>
 
       <div className="widget-studio__manifest">
@@ -266,12 +266,12 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
 
       <div className="field-row widget-studio__fields">
         <div className="field" style={{ flex: '1 1 12rem' }}>
-          <label htmlFor="ws-team">Team lead (pubkey)</label>
+          <label htmlFor="ws-team">Team lead wallet</label>
           <input
             id="ws-team"
             value={teamLead}
             onChange={(e) => setTeamLead(e.target.value)}
-            placeholder="Base58 pubkey"
+            placeholder="Solana wallet address"
             autoComplete="off"
             disabled={Boolean(embedToken.trim())}
           />
@@ -288,7 +288,7 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
           />
         </div>
         <div className="field" style={{ flex: '1 1 10rem' }}>
-          <label htmlFor="ws-rpc">RPC (optional)</label>
+          <label htmlFor="ws-rpc">Custom network URL (optional)</label>
           <input
             id="ws-rpc"
             value={rpc}
@@ -305,7 +305,7 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
           id="ws-jwt"
           value={embedToken}
           onChange={(e) => setEmbedToken(e.target.value)}
-          placeholder="From POST /api/v1/embed-token — hides pubkeys in the URL"
+          placeholder="From POST /api/v1/embed-token — keeps wallet addresses out of the link"
           autoComplete="off"
           spellCheck={false}
         />
@@ -347,16 +347,16 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
 
       {!canBuildChainWidgets && kind !== 'policy_simulator' && kind !== 'parent_listener' && (
         <p className="error" role="status">
-          Enter team lead and project ID, or paste an embed token.
+          Enter the team lead wallet and project number, or paste an embed token.
         </p>
       )}
 
       {kind === 'policy_simulator' && !policyShare && (
-        <p className="muted">Save a valid policy JSON on the Policy tab to generate a simulator share link.</p>
+        <p className="muted">Save valid payout rules on the Policy tab to build a shareable “what if” link.</p>
       )}
 
       <p className="muted widget-studio__api-meta">
-        API base for this browser: <code>{apiOrigin || '(SSR)'}</code> → <code>/api/v1/project</code>
+        Data API for this site: <code>{apiOrigin || '(SSR)'}</code> → <code>/api/v1/project</code>
       </p>
 
       <div className="btn-row">

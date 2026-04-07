@@ -126,7 +126,8 @@ export function PublicStatus() {
         if (!p.teamLead.trim() || !p.projectId.trim()) {
           setState({
             kind: 'error',
-            message: 'Add team_lead and project_id to the URL, or pass token= from POST /api/v1/embed-token.',
+            message:
+              'Add the team lead wallet and project number to the link, or use a token from POST /api/v1/embed-token.',
           });
           return;
         }
@@ -207,7 +208,7 @@ export function PublicStatus() {
     } catch (e) {
       setState({
         kind: 'error',
-        message: e instanceof Error ? e.message : 'Invalid team_lead or project_id.',
+        message: e instanceof Error ? e.message : 'Check the team lead wallet address and project number.',
       });
       return;
     }
@@ -229,7 +230,7 @@ export function PublicStatus() {
       if (!acc) {
         setState({
           kind: 'error',
-          message: `No project account at PDA ${projectPda.toBase58()} (check team_lead, project_id, RPC, and program id).`,
+          message: `No project found at ${projectPda.toBase58()}. Check the team lead wallet, project number, network, and program.`,
         });
         return;
       }
@@ -379,7 +380,7 @@ export function PublicStatus() {
               </div>
               <div className="widget-embed-compact__kpis">
                 <div className="widget-embed-compact__kpi">
-                  <span className="widget-embed-compact__kpi-label">Vault</span>
+                  <span className="widget-embed-compact__kpi-label">In vault</span>
                   <span className="widget-embed-compact__kpi-value">{state.vaultBalance ?? '—'}</span>
                 </div>
                 <div className="widget-embed-compact__kpi">
@@ -418,9 +419,11 @@ export function PublicStatus() {
               <BrandMark className="brand-mark" />
               <div>
                 <h1>
-                  {BRAND_NAME} — public treasury status
+                  {BRAND_NAME} — public status
                 </h1>
-                {!displayParams.embed && <p className="muted">Read-only view. No wallet required.</p>}
+                {!displayParams.embed && (
+                  <p className="muted">Anyone can view this page — no wallet needed. Numbers are read-only.</p>
+                )}
               </div>
             </div>
             <button type="button" className="ghost" onClick={() => void load()} disabled={state.kind === 'loading'}>
@@ -429,20 +432,19 @@ export function PublicStatus() {
           </header>
 
           <div className={displayParams.embed ? 'panel app-shell__embed-hide' : 'panel'}>
-            <h2>URL parameters</h2>
+            <h2>Link parameters (for builders)</h2>
             <p className="muted">
-              <code>?view=status&amp;team_lead=&lt;pubkey&gt;&amp;project_id=&lt;u64&gt;</code> — optional{' '}
-              <code>&amp;rpc=&lt;https endpoint&gt;</code> — or <code>&amp;token=&lt;JWT&gt;</code> from{' '}
-              <code>POST /api/v1/embed-token</code>. On Vercel, data is fetched via <code>/api/v1/project</code> first.
-              Add <code>&amp;embed=1&amp;compact=1</code> for a minimal iframe widget. With <code>&amp;embed=1</code>, optional{' '}
-              <code>&amp;parent_origin=&lt;encoded origin&gt;</code> enables <code>postMessage</code> to the parent (see{' '}
-              <code>/widget-manifest.json</code>).
+              Point people here with <code>team_lead</code> (team lead wallet) and <code>project_id</code> (number). Optional:{' '}
+              <code>rpc</code> for a custom Solana URL, or <code>token</code> from <code>POST /api/v1/embed-token</code> instead
+              of showing wallets in the link. On Vercel we usually load through <code>/api/v1/project</code> first. Add{' '}
+              <code>embed=1&amp;compact=1</code> for a tiny iframe. With <code>embed=1</code>, <code>parent_origin</code> lets the
+              page message the parent site (see <code>/widget-manifest.json</code>).
             </p>
             <pre className="compact-block">
-              {`team_lead: ${displayParams.teamLead || '(missing)'}
-project_id: ${displayParams.projectId || '(missing)'}
-token: ${displayParams.token ? '(present)' : '(none)'}
-rpc: ${defaultRpc}`}
+              {`team_lead wallet: ${displayParams.teamLead || '(missing)'}
+project number: ${displayParams.projectId || '(missing)'}
+embed token: ${displayParams.token ? '(present)' : '(none)'}
+network: ${defaultRpc}`}
             </pre>
           </div>
 
@@ -453,36 +455,36 @@ rpc: ${defaultRpc}`}
           {state.kind === 'ok' && (
             <>
               <div className="panel">
-                <h2>Project</h2>
+                <h2>Project details</h2>
                 <pre className="compact-block">
-                  {`PDA: ${state.projectPda}
-team_lead: ${shortAddr(state.teamLead, 8, 8)}
-on-chain project_id: ${state.projectId}
-policy_version: ${state.policyVersion}
-policy_hash: ${state.policyHashHex}
-frozen: ${state.frozen}
-require_artifact_for_execute: ${state.requireArtifactForExecute}
-vault_initialized: ${state.vaultInitialized}
-mint: ${state.mint ? shortAddr(state.mint, 8, 8) : '—'}
-vault_balance: ${state.vaultBalance ?? '—'}
-rpc (read): ${state.rpcUsed ?? 'client'}`}
+                  {`On-chain address: ${state.projectPda}
+Team lead wallet: ${shortAddr(state.teamLead, 8, 8)}
+Project number: ${state.projectId}
+Rules version: ${state.policyVersion}
+Rules fingerprint: ${state.policyHashHex}
+Payouts paused: ${state.frozen}
+Proof required before pay: ${state.requireArtifactForExecute}
+Vault ready: ${state.vaultInitialized}
+Token: ${state.mint ? shortAddr(state.mint, 8, 8) : '—'}
+Vault balance: ${state.vaultBalance ?? '—'}
+Data from: ${state.rpcUsed ?? 'browser'}`}
                 </pre>
               </div>
 
               {state.proposals.length > 0 && (
                 <div className="panel">
-                  <h2>Proposals</h2>
-                  <div className="proposal-list" aria-label="Proposals">
+                  <h2>Payout requests</h2>
+                  <div className="proposal-list" aria-label="Payout requests">
                     {state.proposals.map((p) => (
                       <div key={p.proposalId} className="proposal-card">
                         <div className="proposal-card-top">
                           <span className={badgeClassForStatus(p.statusCode)}>{p.status}</span>
-                          <span className="proposal-meta">Proposal #{p.proposalId}</span>
+                          <span className="proposal-meta">Request #{p.proposalId}</span>
                         </div>
                         <div className="proposal-meta">
-                          cap {p.amount} · released {p.releasedSoFar} · remaining {p.amountRemaining} →{' '}
-                          {shortAddr(p.recipient)} · artifact {shortAddr(p.artifactSha256Hex, 6, 6)}
-                          {p.disputeActive ? ' · dispute' : ''}
+                          Limit {p.amount} · paid {p.releasedSoFar} · left {p.amountRemaining} → {shortAddr(p.recipient)} ·
+                          proof {shortAddr(p.artifactSha256Hex, 6, 6)}
+                          {p.disputeActive ? ' · in dispute' : ''}
                         </div>
                       </div>
                     ))}

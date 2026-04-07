@@ -16,5 +16,5 @@ export const BRAND_TAGLINE =
 export const DOCUMENT_TITLES = {
   main: `${BRAND_NAME} — Secure creator treasury on Solana`,
   status: `Public treasury status — ${BRAND_NAME}`,
-  simulate: `Policy payout simulator — ${BRAND_NAME}`,
+  simulate: `Payout “what if” calculator — ${BRAND_NAME}`,
 } as const;

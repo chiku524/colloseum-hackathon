@@ -32,9 +32,9 @@ function DonutChart({
     const sum = v + o + d;
     const scale = sum > 0 && sum < 99.5 ? 100 / sum : 1;
     return [
-      { pct: v * scale, color: COL_VAULT, label: 'In vault' },
-      { pct: o * scale, color: COL_OUTSTANDING, label: 'Committed (unpaid)' },
-      { pct: d * scale, color: COL_DISBURSED, label: 'Disbursed (proposals)' },
+      { pct: v * scale, color: COL_VAULT, label: 'In vault now' },
+      { pct: o * scale, color: COL_OUTSTANDING, label: 'Promised, not paid yet' },
+      { pct: d * scale, color: COL_DISBURSED, label: 'Already paid out' },
     ].filter((s) => s.pct > 0.05);
   }, [metrics, total]);
 
@@ -60,20 +60,20 @@ function DonutChart({
         className="treasury-donut"
         style={{ background: gradient }}
         role="img"
-        aria-label="Treasury allocation donut chart"
+        aria-label="Treasury split donut chart"
       />
       <ul className="treasury-legend">
         <li>
           <span className="treasury-swatch" style={{ background: COL_VAULT }} />
-          In vault
+          In vault now
         </li>
         <li>
           <span className="treasury-swatch" style={{ background: COL_OUTSTANDING }} />
-          Committed (unpaid)
+          Promised, not paid yet
         </li>
         <li>
           <span className="treasury-swatch" style={{ background: COL_DISBURSED }} />
-          Disbursed (proposals)
+          Already paid out
         </li>
       </ul>
     </div>
@@ -89,7 +89,7 @@ function StackedBar({ metrics, total }: { metrics: TreasuryFlowMetrics; total: b
     <div className="treasury-bar" role="presentation">
       <div className="treasury-bar__track">
         {v > 0 && (
-          <div className="treasury-bar__seg treasury-bar__seg--vault" style={{ width: `${v}%` }} title={`Vault ${v}%`} />
+          <div className="treasury-bar__seg treasury-bar__seg--vault" style={{ width: `${v}%` }} title={`In vault ${v}%`} />
         )}
         {o > 0 && (
           <div
@@ -145,39 +145,39 @@ export function TreasuryAnalytics({ proposals, vaultInitialized, vaultAmountRaw,
   return (
     <div className="treasury-analytics">
       <p className="muted treasury-analytics__intro">
-        Snapshot from the vault token account and on-chain release proposals.{' '}
-        <strong>Split automation</strong> can transfer tokens without updating proposal totals; <strong>in vault</strong>{' '}
-        always matches the live ATA.
+        Numbers come from your vault’s token balance and approved payout requests. If you use <strong>automatic split</strong>{' '}
+        payouts in Setup, some tokens may move without changing these request totals — <strong>in vault now</strong> always
+        matches the live balance.
       </p>
 
       {!vaultInitialized ? (
-        <p className="muted">Vault not initialized yet — initialize in Setup to see balances.</p>
+        <p className="muted">Turn the vault on under Setup to see balances here.</p>
       ) : (
         <>
           <div className="treasury-kpi-grid">
             <div className="treasury-kpi">
-              <div className="treasury-kpi__label">In vault (liquid)</div>
+              <div className="treasury-kpi__label">In vault now</div>
               <div className="treasury-kpi__value">{formatTokenAtoms(inVault, vaultDecimals)}</div>
               {mint && (
                 <div className="treasury-kpi__meta">
-                  mint <code>{shortAddr(mint, 6, 6)}</code>
+                  Token <code>{shortAddr(mint, 6, 6)}</code>
                 </div>
               )}
             </div>
             <div className="treasury-kpi">
-              <div className="treasury-kpi__label">Committed, not yet paid</div>
+              <div className="treasury-kpi__label">Promised, not paid yet</div>
               <div className="treasury-kpi__value">{formatTokenAtoms(outstandingCommitted, vaultDecimals)}</div>
-              <div className="treasury-kpi__meta">Approved caps minus released (non-cancelled)</div>
+              <div className="treasury-kpi__meta">Approved limits minus what already went out (ignores cancelled)</div>
             </div>
             <div className="treasury-kpi">
-              <div className="treasury-kpi__label">Disbursed via proposals</div>
+              <div className="treasury-kpi__label">Paid out on requests</div>
               <div className="treasury-kpi__value">{formatTokenAtoms(disbursedViaProposals, vaultDecimals)}</div>
-              <div className="treasury-kpi__meta">Sum of released amounts (execute_release)</div>
+              <div className="treasury-kpi__meta">Total sent after approvals</div>
             </div>
             <div className="treasury-kpi treasury-kpi--total">
-              <div className="treasury-kpi__label">Attributed total</div>
+              <div className="treasury-kpi__label">All tracked funds</div>
               <div className="treasury-kpi__value">{formatTokenAtoms(totalAttributable, vaultDecimals)}</div>
-              <div className="treasury-kpi__meta">Vault + committed + disbursed (see note above)</div>
+              <div className="treasury-kpi__meta">Vault + promised + paid (see note above about automation)</div>
             </div>
           </div>
 
@@ -190,14 +190,14 @@ export function TreasuryAnalytics({ proposals, vaultInitialized, vaultAmountRaw,
 
       {proposals.length > 0 && (
         <div className="treasury-table-wrap">
-          <h3 className="treasury-subhead">By proposal status</h3>
+          <h3 className="treasury-subhead">By payout request status</h3>
           <table className="treasury-table">
             <thead>
               <tr>
                 <th>Status</th>
                 <th>Count</th>
-                <th>Released (sum)</th>
-                <th>Remaining cap (sum)</th>
+                <th>Paid so far (sum)</th>
+                <th>Still allowed (sum)</th>
               </tr>
             </thead>
             <tbody>

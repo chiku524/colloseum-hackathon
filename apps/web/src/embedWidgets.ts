@@ -131,37 +131,37 @@ export const WIDGET_CATALOG = [
   {
     id: 'status_iframe',
     label: 'Status — full iframe',
-    hint: 'Height ~520px. Uses read-only status UI inside your site.',
+    hint: 'About 520px tall. Embeds the read-only status page inside your site.',
   },
   {
     id: 'status_iframe_compact',
     label: 'Status — compact iframe',
-    hint: 'Height ~160px. Vault balance & key counts only; best for footers and sidebars.',
+    hint: 'About 160px tall. Vault balance and headline counts — good for footers and sidebars.',
   },
   {
     id: 'status_link',
     label: 'Public status link',
-    hint: 'Opens full status page in a new tab (no iframe).',
+    hint: 'Opens the full status page in a new tab (no iframe).',
   },
   {
     id: 'project_api',
     label: 'JSON API (fetch / curl)',
-    hint: 'Same snapshot as the status page: GET /api/v1/project. CORS enabled.',
+    hint: 'Same data as the status page via GET /api/v1/project. CORS enabled for browsers.',
   },
   {
     id: 'react_component',
     label: 'React iframe component',
-    hint: 'Drop-in JSX using the full or compact iframe src.',
+    hint: 'Ready-to-paste JSX for the full or compact iframe.',
   },
   {
     id: 'policy_simulator',
-    label: 'Policy simulator link',
-    hint: 'Share deposit math for a policy JSON (no chain). Requires valid policy from Policy tab.',
+    label: '“What if” calculator link',
+    hint: 'Share deposit math without the chain. Needs valid rules from the Policy tab.',
   },
   {
     id: 'parent_listener',
-    label: 'Parent page — postMessage listener',
-    hint: 'TypeScript snippet for the host page. Add parent_origin to the iframe URL (Widget Studio field).',
+    label: 'Parent page — message listener',
+    hint: 'TypeScript snippet for the host page. Fill parent_origin in Share tab when you build the iframe URL.',
   },
 ] as const;
 

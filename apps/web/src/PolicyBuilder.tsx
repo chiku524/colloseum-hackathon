@@ -99,7 +99,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         <h2>Policy builder</h2>
         {parseErr ? (
           <p className="error" role="alert">
-            Fix JSON in Advanced view: {parseErr}
+            Fix the raw rules under Policy → Advanced, then come back: {parseErr}
           </p>
         ) : (
           <p className="muted">Loading…</p>
@@ -112,15 +112,16 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
 
   return (
     <div className="panel policy-builder">
-      <h2>Policy builder</h2>
+      <h2>Payout rules</h2>
       <p className="muted">
-        Templates and toggles produce canonical JSON + hash for <code>set_policy</code>. On-chain rules are still
-        approvers, timelock, and execute — policy splits guide the simulator and optional payout checks in this app.
+        Pick a template or edit splits below. This drives the “what if” calculator and optional checks before you sign a
+        payout. Saving on-chain still uses your approvers, wait times, and payment flow — this page is how you document who
+        should get what.
       </p>
 
       {parseErr && (
         <p className="muted" style={{ color: 'var(--danger)' }}>
-          Advanced JSON does not parse or validate — fix it to sync. Showing last good builder state: {parseErr}
+          The advanced rules file has an error — fix it to sync. Showing the last version that worked: {parseErr}
         </p>
       )}
 
@@ -165,7 +166,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
           }
         >
           <strong>4-way custom</strong>
-          <span>Four real pubkeys (you + 3 collaborators).</span>
+          <span>Four real wallet addresses (you + 3 collaborators).</span>
         </button>
         <button
           type="button"
@@ -197,7 +198,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
             type="text"
             value={partnerPubkey}
             onChange={(e) => setPartnerPubkey(e.target.value)}
-            placeholder="Second pubkey (base58)"
+            placeholder="Partner’s Solana wallet address"
             spellCheck={false}
           />
         </div>
@@ -208,7 +209,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
             type="text"
             value={contractorPubkey}
             onChange={(e) => setContractorPubkey(e.target.value)}
-            placeholder="Contractor pubkey"
+            placeholder="Contractor wallet address"
             spellCheck={false}
           />
         </div>
@@ -237,8 +238,8 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
             onChange={(e) => updateWorkflow({ suggestArtifactGate: e.target.checked })}
           />
           <span>
-            Suggest <strong>artifact gate</strong> (enable in Setup so execute requires a deliverable hash — good for
-            milestone escrow).
+            Suggest <strong>proof before paying</strong> (turn on under Setup so payouts need a delivery fingerprint —
+            good for milestones).
           </span>
         </label>
         <label className="toggle-row">
@@ -248,14 +249,14 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
             onChange={(e) => updateWorkflow({ payoutRecipientsMustBePolicyPayees: e.target.checked })}
           />
           <span>
-            <strong>Restrict proposals</strong> to recipient wallets listed in splits (this app enforces before
-            signing; chain still stores policy hash only).
+            <strong>Only pay wallets listed here</strong> — this app warns before you sign if someone else is chosen (the
+            chain still stores a compact fingerprint of these rules).
           </span>
         </label>
       </div>
 
       <div className="field" style={{ marginTop: '0.75rem' }}>
-        <label htmlFor="pb-title">Policy title (display / audit)</label>
+        <label htmlFor="pb-title">Short title (for your team’s records)</label>
         <input
           id="pb-title"
           type="text"
@@ -267,7 +268,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
       </div>
 
       <h3 className="policy-builder__h3">Timelock default</h3>
-      <p className="muted small">Used as the default when you click “Use policy timelock” on Proposals.</p>
+      <p className="muted small">Used when you tap “Use rules default” on the Proposals tab.</p>
       <div className="field-row">
         <div className="field" style={{ maxWidth: '14rem' }}>
           <label htmlFor="pb-tl-preset">Preset</label>
@@ -302,7 +303,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
 
       <h3 className="policy-builder__h3">Holdback</h3>
       <div className="field" style={{ maxWidth: '12rem' }}>
-        <label htmlFor="pb-hold">Holdback (basis points, 100 = 1%)</label>
+        <label htmlFor="pb-hold">Hold back (points out of 10,000 — 100 = 1%)</label>
         <input
           id="pb-hold"
           type="number"
@@ -313,10 +314,10 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         />
       </div>
 
-      <h3 className="policy-builder__h3">Automation (informational)</h3>
+      <h3 className="policy-builder__h3">Automation notes (informational)</h3>
       <p className="muted small">
-        Solana has no cron inside the program. <code>planned_crank</code> documents future permissionless or keeper
-        flows — not active on-chain in this build.
+        The blockchain cannot run a clock by itself. Use this field to leave notes for your team about future auto-payout
+        ideas — it does not turn anything on by itself.
       </p>
       <div className="field-row">
         <div className="field" style={{ maxWidth: '16rem' }}>
@@ -332,8 +333,8 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
               });
             }}
           >
-            <option value="none">None (human-triggered releases only)</option>
-            <option value="planned_crank">Planned crank / keeper (design only)</option>
+            <option value="none">None (people trigger every payout)</option>
+            <option value="planned_crank">Planned automation (notes only — not live)</option>
           </select>
         </div>
       </div>
@@ -356,8 +357,11 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         </div>
       )}
 
-      <h3 className="policy-builder__h3">Splits (policy payees)</h3>
-      <p className="muted small">Basis points across rows + holdback must total at most 10,000.</p>
+      <h3 className="policy-builder__h3">Who gets what (split list)</h3>
+      <p className="muted small">
+        Each row is a wallet and its share in points (out of 10,000). All rows plus holdback must stay at or under
+        10,000 points.
+      </p>
       <div className="split-editor">
         {model.splits.map((row, index) => (
           <div key={index} className="split-editor__row">
@@ -365,7 +369,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
               type="text"
               value={row.payee}
               onChange={(e) => updateSplitRow(index, 'payee', e.target.value)}
-              placeholder="Payee pubkey"
+              placeholder="Wallet address"
               spellCheck={false}
             />
             <input
@@ -376,7 +380,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
               onChange={(e) => updateSplitRow(index, 'bps', e.target.value)}
               className="split-editor__bps"
             />
-            <span className="muted">bps</span>
+            <span className="muted">pts / 10k</span>
             <button type="button" className="ghost" disabled={model.splits.length <= 1} onClick={() => removeSplitRow(index)}>
               Remove
             </button>
@@ -384,7 +388,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         ))}
       </div>
       <button type="button" className="ghost" disabled={model.splits.length >= 20} onClick={addSplitRow}>
-        Add payee row
+        Add wallet row
       </button>
 
       <h3 className="policy-builder__h3">Documentation</h3>

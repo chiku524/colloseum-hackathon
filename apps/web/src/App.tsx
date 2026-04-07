@@ -264,7 +264,7 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !projectPda || !wallet.publicKey) {
-      setErr('Connect wallet and ensure project id is valid.');
+      setErr('Connect your wallet and enter a valid project number.');
       return;
     }
     setBusy(true);
@@ -274,7 +274,7 @@ export default function App() {
       if (!acc) {
         setOnChain(null);
         setProposals([]);
-        setStatus('No project account at this PDA (initialize on-chain first).');
+        setStatus('No project found for this wallet and number yet. Create one under Setup first.');
         return;
       }
       const hashHex = hex32(Uint8Array.from(acc.policyHash as number[]));
@@ -356,7 +356,7 @@ export default function App() {
         frozen: Boolean(acc.frozen),
         requireArtifactForExecute: Boolean(acc.requireArtifactForExecute),
       });
-      setStatus('Loaded on-chain project.');
+      setStatus('Project loaded.');
     } catch (e) {
       setErr(formatTxError(e));
     } finally {
@@ -378,7 +378,7 @@ export default function App() {
         setErr(v);
         return;
       }
-      setStatus('Policy JSON is valid.');
+      setStatus('Rules look valid.');
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -395,7 +395,7 @@ export default function App() {
       }
       const canon = canonicalPolicyJson(p);
       const h = await sha256BytesUtf8(canon);
-      setStatus(`Canonical hash (hex): ${hex32(h)}`);
+      setStatus(`Fingerprint of your rules (for checking they match on-chain): ${hex32(h)}`);
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -412,13 +412,13 @@ export default function App() {
       }
       const atoms = BigInt(depositSim);
       if (atoms <= 0n) {
-        setErr('Deposit must be a positive integer (token smallest units).');
+        setErr('Enter a deposit amount greater than zero (smallest units of the token).');
         return;
       }
       const { lines, holdback, remainder } = simulatePayout(atoms, p);
       const rows = lines.map((l) => `${l.payee}: ${l.amount.toString()}`).join('\n');
       setStatus(
-        `Simulated (atomic units):\nholdback: ${holdback}\n${rows}\nremainder (stays in vault math): ${remainder}`,
+        `Practice run (smallest units):\nHold back: ${holdback}\n${rows}\nLeft over in the vault after splits: ${remainder}`,
       );
     } catch (e) {
       setErr(formatTxError(e));
@@ -443,11 +443,11 @@ export default function App() {
       u.searchParams.set('p', enc);
       const url = u.toString();
       if (url.length > 2200) {
-        setErr('URL would be too long for some browsers; shorten the policy (fewer payees / mints).');
+        setErr('That link would be too long for some browsers. Use fewer people or tokens in the rules, then try again.');
         return;
       }
       await navigator.clipboard.writeText(url);
-      setStatus('Copied read-only simulator link (no wallet).');
+      setStatus('Copied the read-only “what if” link (no wallet needed).');
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -457,7 +457,7 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !projectPda || !wallet.publicKey) {
-      setErr('Connect wallet first.');
+      setErr('Connect your wallet first.');
       return;
     }
     setBusy(true);
@@ -478,7 +478,7 @@ export default function App() {
           project: projectPda,
         })
         .rpc();
-      setStatus(`set_policy tx: ${sig}`);
+      setStatus(`Rules saved on-chain. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -509,12 +509,12 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain) {
-      setErr('Load a project first.');
+      setErr('Load your project first (Overview → Refresh data).');
       return;
     }
     const pid = Number(opsProposalId);
     if (!Number.isFinite(pid) || pid < 0) {
-      setErr('Invalid proposal id.');
+      setErr('Enter a valid payout request number.');
       return;
     }
     const propPda = proposalPdaFromId(onChain.project, pid);
@@ -532,7 +532,7 @@ export default function App() {
           proposal: propPda,
         })
         .rpc();
-      setStatus(`attach_proposal_artifact tx: ${sig}`);
+      setStatus(`Delivery proof saved. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -545,7 +545,7 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain) {
-      setErr('Load a project first.');
+      setErr('Load your project first (Overview → Refresh data).');
       return;
     }
     const pid = Number(opsProposalId);
@@ -573,7 +573,7 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain) {
-      setErr('Load a project first.');
+      setErr('Load your project first (Overview → Refresh data).');
       return;
     }
     const pid = Number(opsProposalId);
@@ -588,7 +588,7 @@ export default function App() {
           proposal: propPda,
         })
         .rpc();
-      setStatus(`resolve_dispute tx: ${sig}`);
+      setStatus(`Dispute closed. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -608,7 +608,7 @@ export default function App() {
         return;
       }
       setPolicyText(JSON.stringify(merged, null, 2));
-      setStatus('Merged CSV rows into policy splits (validate again before applying on-chain).');
+      setStatus('Imported the spreadsheet rows into your split list. Tap Validate, then Apply on-chain when ready.');
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -618,7 +618,7 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !projectPda) {
-      setErr('Connect wallet and pick a project ID.');
+      setErr('Connect your wallet and enter the same project number you use on Overview.');
       return;
     }
     let approvers: PublicKey[];
@@ -630,7 +630,7 @@ export default function App() {
     }
     const th = Number(initThreshold);
     if (!Number.isInteger(th) || th < 1 || th > approvers.length) {
-      setErr('Threshold must be an integer from 1 to the number of approvers.');
+      setErr('Approvals needed must be a whole number between 1 and how many approvers you listed.');
       return;
     }
     setBusy(true);
@@ -645,7 +645,7 @@ export default function App() {
           systemProgram: SystemProgram.programId,
         })
         .rpc();
-      setStatus(`initialize_project: ${sig}`);
+      setStatus(`Project created. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -658,14 +658,14 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !projectPda || !onChain) {
-      setErr('Load an existing project first.');
+      setErr('Load your project first (Overview → Refresh data).');
       return;
     }
     let mint: PublicKey;
     try {
       mint = new PublicKey(vaultMintStr.trim());
     } catch {
-      setErr('Invalid mint address.');
+      setErr('That token address does not look valid. Paste the full mint address for the coin you want to hold.');
       return;
     }
     setBusy(true);
@@ -689,7 +689,7 @@ export default function App() {
           systemProgram: SystemProgram.programId,
         })
         .rpc();
-      setStatus(`initialize_vault: ${sig}`);
+      setStatus(`Vault is ready for this token. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -702,7 +702,7 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain?.mint) {
-      setErr('Load project with an initialized vault.');
+      setErr('Finish vault setup first (Setup → turn the vault on).');
       return;
     }
     let amount: BN;
@@ -733,7 +733,7 @@ export default function App() {
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc();
-      setStatus(`deposit: ${sig}`);
+      setStatus(`Deposit submitted. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -746,14 +746,14 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain) {
-      setErr('Load project first.');
+      setErr('Load your project first (Overview → Refresh data).');
       return;
     }
     let recipient: PublicKey;
     try {
       recipient = new PublicKey(relRecipient.trim());
     } catch {
-      setErr('Invalid recipient pubkey.');
+      setErr('That recipient wallet address does not look valid.');
       return;
     }
     const parsedForGate = parsePolicyJson(policyText);
@@ -762,7 +762,7 @@ export default function App() {
       !isRecipientAllowedByPolicy(parsedForGate.policy, relRecipient.trim())
     ) {
       setErr(
-        'Policy restricts payout recipients to wallets listed in splits. Pick a listed payee or turn off that toggle in Policy.',
+        'Your rules only allow paying wallets that are listed in the split. Pick someone from that list, or turn off “Restrict proposals” on the Policy tab.',
       );
       return;
     }
@@ -790,7 +790,7 @@ export default function App() {
           systemProgram: SystemProgram.programId,
         })
         .rpc();
-      setStatus(`propose_release #${nextId}: ${sig}`);
+      setStatus(`Payout request #${nextId} created. Transaction: ${sig}`);
       setOpsProposalId(String(nextId));
       await loadOnChain();
     } catch (e) {
@@ -806,7 +806,7 @@ export default function App() {
     if (!program || !wallet.publicKey || !onChain) return;
     const pid = Number(opsProposalId);
     if (!Number.isInteger(pid) || pid < 0) {
-      setErr('Invalid proposal id.');
+      setErr('Enter a valid payout request number.');
       return;
     }
     const proposalPda = proposalPdaFromId(onChain.project, pid);
@@ -820,7 +820,7 @@ export default function App() {
           proposal: proposalPda,
         })
         .rpc();
-      setStatus(`approve_release: ${sig}`);
+      setStatus(`Your approval was recorded. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -833,22 +833,22 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain?.mint) {
-      setErr('Load project with vault.');
+      setErr('Load your project and finish vault setup first.');
       return;
     }
     const pid = Number(opsProposalId);
     if (!Number.isInteger(pid) || pid < 0) {
-      setErr('Invalid proposal id.');
+      setErr('Enter a valid payout request number.');
       return;
     }
     const prop = proposals.find((p) => p.proposalId === String(pid));
     if (!prop) {
-      setErr('Proposal not in loaded list — refresh Overview.');
+      setErr('That payout request is not in the list. Go to Overview and tap Refresh data.');
       return;
     }
     if (onChain.requireArtifactForExecute && isZeroArtifactSha256Hex(prop.artifactSha256Hex)) {
       setErr(
-        'This project requires a non-zero proposal artifact before execute. Attach one under Proposals → Artifacts & disputes.',
+        'This team requires a delivery proof before money can be sent. Add one under Proposals → Proof & disputes.',
       );
       return;
     }
@@ -859,7 +859,7 @@ export default function App() {
     let releaseBn: BN;
     if (!rawExec) {
       if (remainderBn.lte(new BN(0))) {
-        setErr('Nothing left to release for this proposal under the approved cap.');
+        setErr('There is nothing left to pay out for this request within the approved limit.');
         return;
       }
       releaseBn = remainderBn;
@@ -868,15 +868,15 @@ export default function App() {
       try {
         parsed = new BN(rawExec, 10);
       } catch {
-        setErr('Execute tranche amount must be a non-negative integer (smallest units).');
+        setErr('Payment amount must be a whole number (use the smallest unit of your token, same as your wallet often shows).');
         return;
       }
       if (parsed.lte(new BN(0))) {
-        setErr('Execute tranche amount must be greater than zero.');
+        setErr('Enter a payment amount greater than zero.');
         return;
       }
       if (parsed.gt(remainderBn)) {
-        setErr(`Tranche exceeds remainder under cap (${remainderBn.toString()} smallest units left).`);
+        setErr(`That amount is more than what is left to pay on this request (${remainderBn.toString()} smallest units remaining).`);
         return;
       }
       releaseBn = parsed;
@@ -904,7 +904,7 @@ export default function App() {
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc();
-      setStatus(`execute_release: ${sig}`);
+      setStatus(`Payment sent. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -919,7 +919,7 @@ export default function App() {
     if (!program || !wallet.publicKey || !onChain) return;
     const pid = Number(opsProposalId);
     if (!Number.isInteger(pid) || pid < 0) {
-      setErr('Invalid proposal id.');
+      setErr('Enter a valid payout request number.');
       return;
     }
     const proposalPda = proposalPdaFromId(onChain.project, pid);
@@ -933,7 +933,7 @@ export default function App() {
           proposal: proposalPda,
         })
         .rpc();
-      setStatus(`cancel_proposal: ${sig}`);
+      setStatus(`Payout request cancelled. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -955,7 +955,9 @@ export default function App() {
           project: onChain.project,
         })
         .rpc();
-      setStatus(`set_frozen(${frozen}): ${sig}`);
+      setStatus(
+        frozen ? `Payouts are paused (emergency stop on). Transaction: ${sig}` : `Payouts are unpaused. Transaction: ${sig}`,
+      );
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -977,7 +979,11 @@ export default function App() {
           project: onChain.project,
         })
         .rpc();
-      setStatus(`set_require_artifact(${require}): ${sig}`);
+      setStatus(
+        require
+          ? `Delivery proof now required before paying out. Transaction: ${sig}`
+          : `Delivery proof no longer required to pay out. Transaction: ${sig}`,
+      );
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -993,12 +999,12 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !projectPda) {
-      setErr('Connect wallet and set project ID.');
+      setErr('Connect your wallet and set the project number.');
       return;
     }
     const pid = Number(projectIdStr);
     if (!Number.isInteger(pid) || pid < 0) {
-      setErr('Invalid project ID.');
+      setErr('Enter a valid project number (0 or higher).');
       return;
     }
     setBusy(true);
@@ -1012,7 +1018,7 @@ export default function App() {
           systemProgram: SystemProgram.programId,
         })
         .rpc();
-      setStatus(`upgrade_project_layout: ${sig}`);
+      setStatus(`Project upgraded for automation (one-time step). Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1025,12 +1031,12 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain) {
-      setErr('Load project first.');
+      setErr('Load your project first (Overview → Refresh data).');
       return;
     }
     const mode = Number(autoMode);
     if (mode !== AUTOMATION_MODE_NONE && mode !== AUTOMATION_MODE_SPLIT) {
-      setErr('Mode must be 0 (off) or 1 (split crank).');
+      setErr('Choose Off or Split payouts in the mode menu.');
       return;
     }
     let recipients: PublicKey[] = [];
@@ -1046,28 +1052,28 @@ export default function App() {
         .filter(Boolean)
         .map((s) => Number(s));
       if (rparts.length === 0 || rparts.length > 8) {
-        setErr('Provide 1–8 recipient pubkeys for split crank.');
+        setErr('Add 1–8 wallet addresses that should receive split payouts.');
         return;
       }
       if (bparts.length !== rparts.length) {
-        setErr('Recipients and bps counts must match.');
+        setErr('Each wallet needs a matching share number — same count in both boxes.');
         return;
       }
       try {
         recipients = rparts.map((s) => new PublicKey(s));
       } catch {
-        setErr('Invalid recipient pubkey.');
+        setErr('That recipient wallet address does not look valid.');
         return;
       }
       for (const b of bparts) {
         if (!Number.isInteger(b) || b < 0 || b > 10_000) {
-          setErr('Each bps must be an integer 0–10000.');
+          setErr('Each share must be a whole number from 0 to 10,000 (points out of 10,000).');
           return;
         }
       }
       const sum = bparts.reduce((a, b) => a + b, 0);
       if (sum <= 0 || sum > 10_000) {
-        setErr('Sum of bps must be 1–10000.');
+        setErr('Shares must add up to between 1 and 10,000 points.');
         return;
       }
       bps = bparts;
@@ -1080,7 +1086,7 @@ export default function App() {
         return;
       }
       if (!maxPer || BigInt(maxPer) <= 0n) {
-        setErr('Max per tick must be > 0 (smallest token units).');
+        setErr('Max amount per run must be greater than zero (smallest units of your token).');
         return;
       }
     }
@@ -1090,7 +1096,7 @@ export default function App() {
         nextBn = new BN(autoNextTs.trim(), 10);
         if (nextBn.isNeg()) throw new Error('neg');
       } catch {
-        setErr('Next eligible must be a non-negative integer (unix seconds).');
+        setErr('Next run time must be a valid Unix timestamp in seconds (or leave blank to start from now).');
         return;
       }
     } else {
@@ -1113,7 +1119,7 @@ export default function App() {
           project: onChain.project,
         })
         .rpc();
-      setStatus(`configure_automation: ${sig}`);
+      setStatus(`Automation settings saved. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1126,7 +1132,7 @@ export default function App() {
     setErr(null);
     setStatus(null);
     if (!program || !wallet.publicKey || !onChain?.mint) {
-      setErr('Load project with vault.');
+      setErr('Load your project and finish vault setup first.');
       return;
     }
     setBusy(true);
@@ -1139,7 +1145,7 @@ export default function App() {
           ? (countRaw as { toNumber: () => number }).toNumber()
           : Number(countRaw ?? 0);
       if (!count) {
-        setErr('No automation recipients on-chain; configure automation first.');
+        setErr('Set up split payouts first, then try running them.');
         return;
       }
       const list = (proj.autoRecipients ?? proj.auto_recipients) as PublicKey[];
@@ -1170,7 +1176,7 @@ export default function App() {
         })
         .remainingAccounts(remainingAccounts)
         .rpc();
-      setStatus(`crank_automation: ${sig}`);
+      setStatus(`Automation run finished. Transaction: ${sig}`);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1182,17 +1188,17 @@ export default function App() {
   const onExportCsv = () => {
     setErr(null);
     if (!onChain) {
-      setErr('Load a project first.');
+      setErr('Load your project first (Overview → Refresh data).');
       return;
     }
     downloadTextFile(`stronghold-proposals-${onChain.onChainProjectId}.csv`, proposalsToCsv(proposals));
-    setStatus('Proposal CSV downloaded.');
+    setStatus('Payout list downloaded as CSV.');
   };
 
   const onExportAudit = () => {
     setErr(null);
     if (!onChain) {
-      setErr('Load a project first.');
+      setErr('Load your project first (Overview → Refresh data).');
       return;
     }
     const pkg: AuditPackage = {
@@ -1212,7 +1218,7 @@ export default function App() {
       proposals,
     };
     downloadJson(`stronghold-audit-${onChain.onChainProjectId}.json`, pkg);
-    setStatus('Audit JSON downloaded.');
+    setStatus('Audit file downloaded.');
   };
 
   return (
@@ -1228,7 +1234,7 @@ export default function App() {
         <WalletMultiButton />
       </header>
 
-      <nav className="tabs" role="tablist" aria-label="Sections">
+      <nav className="tabs" role="tablist" aria-label="Main sections">
         <button type="button" role="tab" aria-selected={tab === 'overview'} onClick={() => setTab('overview')}>
           Overview
         </button>
@@ -1245,17 +1251,20 @@ export default function App() {
           Proposals
         </button>
         <button type="button" role="tab" aria-selected={tab === 'widgets'} onClick={() => setTab('widgets')}>
-          Widgets
+          Share
         </button>
       </nav>
 
       {tab === 'overview' && (
         <div className="panel">
-          <h2>Load project</h2>
-          <p className="muted">Uses your connected wallet as team lead and derives the project PDA from the numeric ID.</p>
+          <h2>Your project</h2>
+          <p className="muted">
+            Enter the <strong>project number</strong> you chose when you created the team. Your connected wallet must be
+            the team lead. Then load the latest info from Solana.
+          </p>
           <div className="field-row">
             <div className="field" style={{ flex: '0 0 7.5rem' }}>
-              <label htmlFor="pid">Project ID</label>
+              <label htmlFor="pid">Project number</label>
               <input
                 id="pid"
                 type="number"
@@ -1265,51 +1274,54 @@ export default function App() {
               />
             </div>
             <button type="button" className="ghost" disabled={busy || !program || !projectPda} onClick={loadOnChain}>
-              {busy ? 'Loading…' : 'Refresh on-chain'}
+              {busy ? 'Loading…' : 'Refresh data'}
             </button>
           </div>
           {projectPda && (
             <p className="muted">
-              PDA <code>{projectPda.toBase58()}</code>
+              On-chain project address: <code>{projectPda.toBase58()}</code>
             </p>
           )}
           {onChain && (
             <>
               <div className="stat-grid">
                 <div className="stat">
-                  <div className="stat-label">Policy v</div>
+                  <div className="stat-label">Rules version</div>
                   <div className="stat-value">{onChain.policyVersion}</div>
                 </div>
                 <div className="stat">
-                  <div className="stat-label">Proposals</div>
+                  <div className="stat-label">Next payout #</div>
                   <div className="stat-value">{onChain.nextProposalId}</div>
                 </div>
                 <div className="stat">
-                  <div className="stat-label">Vault</div>
-                  <div className="stat-value">{onChain.vaultInitialized ? 'Ready' : 'Off'}</div>
+                  <div className="stat-label">Vault ready</div>
+                  <div className="stat-value">{onChain.vaultInitialized ? 'Yes' : 'Not yet'}</div>
                 </div>
                 <div className="stat">
-                  <div className="stat-label">Balance</div>
+                  <div className="stat-label">Vault balance</div>
                   <div className="stat-value">{onChain.vaultBalance ?? '—'}</div>
                 </div>
                 <div className="stat">
-                  <div className="stat-label">Frozen</div>
+                  <div className="stat-label">Payouts paused</div>
                   <div className="stat-value">{onChain.frozen ? 'Yes' : 'No'}</div>
                 </div>
                 <div className="stat">
-                  <div className="stat-label">Artifact gate</div>
-                  <div className="stat-value">{onChain.requireArtifactForExecute ? 'On' : 'Off'}</div>
+                  <div className="stat-label">Proof before pay</div>
+                  <div className="stat-value">{onChain.requireArtifactForExecute ? 'Required' : 'Off'}</div>
                 </div>
               </div>
               <pre className="data-block">
-                {`team_lead: ${shortAddr(onChain.teamLead, 6, 6)} (${onChain.teamLead})
-project_id: ${onChain.onChainProjectId}
-policy_hash: ${onChain.policyHashHex}
-require_artifact_for_execute: ${onChain.requireArtifactForExecute}
-mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
+                {`Team lead wallet: ${shortAddr(onChain.teamLead, 6, 6)}
+Full address: ${onChain.teamLead}
+Project number: ${onChain.onChainProjectId}
+Rules fingerprint: ${onChain.policyHashHex}
+Delivery proof required to pay: ${onChain.requireArtifactForExecute ? 'yes' : 'no'}
+Token in vault: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}
+Token full address: ${onChain.mint ?? '—'}`}
               </pre>
               <p className="muted" style={{ marginTop: '0.75rem' }}>
-                Share a read-only snapshot (no wallet): copy link opens the same app in public status mode.
+                Share a <strong>read-only</strong> view (no wallet needed): anyone with the link can see balances and
+                status.
               </p>
               <div className="btn-row">
                 <button
@@ -1336,7 +1348,7 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                     setErr(null);
                     try {
                       await navigator.clipboard.writeText(publicEmbedStatusUrl);
-                      setStatus('Copied iframe-friendly status link (embed=1).');
+                      setStatus('Copied embed link for a website iframe.');
                     } catch (e) {
                       setErr(e instanceof Error ? e.message : 'Could not copy link.');
                     }
@@ -1348,7 +1360,7 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
             </>
           )}
           {proposals.length > 0 && (
-            <div className="proposal-list" aria-label="Proposals">
+            <div className="proposal-list" aria-label="Payout requests">
               {proposals.map((p) => (
                 <div key={p.proposalId} className="proposal-card">
                   <div className="proposal-card-top">
@@ -1356,8 +1368,8 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                     <span className="proposal-meta">Proposal #{p.proposalId}</span>
                   </div>
                   <div className="proposal-meta">
-                    cap {p.amount} · released {p.releasedSoFar} → {shortAddr(p.recipient)} · policy v{p.policyVersionAtProposal}
-                    {p.disputeActive ? ' · dispute' : ''}
+                    Limit {p.amount} · paid {p.releasedSoFar} → {shortAddr(p.recipient)} · rules v{p.policyVersionAtProposal}
+                    {p.disputeActive ? ' · in dispute' : ''}
                   </div>
                 </div>
               ))}
@@ -1368,12 +1380,12 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
 
       {tab === 'treasury' && (
         <div className="panel">
-          <h2>Treasury analytics</h2>
+          <h2>Treasury snapshot</h2>
           <p className="muted">
-            Vault balance, committed (unpaid) proposal caps, and cumulative disbursements through{' '}
-            <code>execute_release</code>. Choose who may see these charts in this browser.
+            See how much sits in the vault, how much is promised but not yet paid, and how much has already gone out on
+            approved payout requests. Choose who can see these charts in <em>this</em> browser.
           </p>
-          <div className="treasury-visibility-toggle" role="group" aria-label="Treasury tab visibility">
+          <div className="treasury-visibility-toggle" role="group" aria-label="Who can see treasury charts">
             <button
               type="button"
               className={treasuryVisibility === 'private' ? 'is-selected' : undefined}
@@ -1392,25 +1404,25 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
             </button>
           </div>
           <p className="muted treasury-visibility-hint">
-            <strong>Private</strong> — only wallets in the on-chain approver list see charts.{' '}
-            <strong>Public</strong> — anyone who can load this project in this session (same wallet + project ID as
-            Overview) sees charts without being an approver. This setting is saved in{' '}
-            <code>localStorage</code> for this origin only; it does not change on-chain permissions.
+            <strong>Private</strong> — only people whose wallets are on the approver list see the charts.{' '}
+            <strong>Public</strong> — anyone using this browser with the same wallet and project number can see the charts,
+            even if they are not an approver. This choice is saved only on your device; it does not change who can approve
+            payouts on-chain.
           </p>
           {treasuryVisibility === 'public' && onChain && canViewTreasuryAnalytics && wallet.publicKey && (
             <p className="treasury-public-banner" role="status">
-              Public view — figures are visible without an approver check. Data still comes from RPC for your loaded
-              project.
+              You turned on public view — numbers show without checking if you are an approver. Data still comes from the
+              Solana network for the project you loaded.
             </p>
           )}
           {!wallet.publicKey ? (
-            <p className="muted">Connect your wallet.</p>
+            <p className="muted">Connect your wallet to continue.</p>
           ) : !onChain ? (
-            <p className="muted">Load the project from Overview first (Refresh on-chain).</p>
+            <p className="muted">Open the Overview tab and tap Refresh data first.</p>
           ) : !canViewTreasuryAnalytics ? (
             <p className="muted">
-              Your wallet is not an approver for this project. Turn on <strong>Public</strong> above to view analytics
-              anyway in this browser, or connect with an approver wallet.
+              This wallet is not on the approver list. Turn on <strong>Public</strong> above to see charts anyway on this
+              device, or connect with a wallet that can approve payouts.
             </p>
           ) : (
             <TreasuryAnalytics
@@ -1423,7 +1435,7 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
           )}
           <div className="btn-row" style={{ marginTop: '1rem' }}>
             <button type="button" className="ghost" disabled={busy || !program || !projectPda} onClick={loadOnChain}>
-              {busy ? 'Refreshing…' : 'Refresh figures'}
+              {busy ? 'Refreshing…' : 'Refresh numbers'}
             </button>
           </div>
         </div>
@@ -1432,14 +1444,14 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
       {tab === 'setup' && (
         <>
           <div className="panel">
-            <h2>Create project</h2>
+            <h2>Create your team project</h2>
             <p className="muted">
-              Uses the numeric <strong>Project ID</strong> from Overview (same PDA). First approver must be your wallet;
-              one pubkey per line or comma-separated.
+              Use the same <strong>project number</strong> as on Overview. List everyone who can approve payouts —{' '}
+              <strong>your wallet must be first</strong>. One Solana wallet address per line (or separate with commas).
             </p>
             <div className="field-row">
               <div className="field" style={{ flex: '0 0 7.5rem' }}>
-                <label htmlFor="setup-pid">Project ID</label>
+                <label htmlFor="setup-pid">Project number</label>
                 <input
                   id="setup-pid"
                   type="number"
@@ -1450,45 +1462,50 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
               </div>
             </div>
             <div className="field">
-              <label htmlFor="pname">Name</label>
+              <label htmlFor="pname">Team name</label>
               <input id="pname" type="text" value={initName} onChange={(e) => setInitName(e.target.value)} maxLength={64} />
             </div>
             <div className="field">
-              <label htmlFor="approvers">Approvers</label>
+              <label htmlFor="approvers">Who can approve payouts</label>
               <textarea
                 id="approvers"
                 className="compact"
                 value={initApproversText}
                 onChange={(e) => setInitApproversText(e.target.value)}
                 spellCheck={false}
-                placeholder="Your pubkey first, then finance / collaborators"
+                placeholder="Your wallet address first, then teammates (one per line)"
               />
             </div>
             <div className="field" style={{ maxWidth: '8rem' }}>
-              <label htmlFor="thr">Threshold</label>
+              <label htmlFor="thr">Approvals needed</label>
               <input id="thr" type="number" min={1} max={5} value={initThreshold} onChange={(e) => setInitThreshold(e.target.value)} />
             </div>
+            <p className="muted" style={{ marginTop: '-0.25rem', fontSize: '0.82rem' }}>
+              How many approvers must sign before a payout can go out (between 1 and the number of wallets you listed).
+            </p>
             <div className="btn-row">
               <button type="button" disabled={busy || !program || !wallet.publicKey || !projectPda} onClick={onCreateProject}>
-                Create project on-chain
+                Create project
               </button>
             </div>
           </div>
 
           <div className="panel">
-            <h2>Vault & liquidity</h2>
+            <h2>Vault & deposits</h2>
             <p className="muted">
-              Paste the SPL <strong>mint</strong> (e.g. devnet USDC). Initializes vault ATA once. Deposit pulls from your
-              wallet ATA (created automatically if missing).
+              Pick <strong>which token</strong> the vault should hold (paste its <strong>mint address</strong> — the same
+              long address your wallet uses for that coin, e.g. devnet USDC). You only turn the vault on once. Deposits
+              move tokens from your wallet into the team vault; if your wallet does not have an account for that token yet,
+              we create it for you.
             </p>
             <div className="field">
-              <label htmlFor="mint">Mint address</label>
+              <label htmlFor="mint">Token mint address</label>
               <input
                 id="mint"
                 type="text"
                 value={vaultMintStr}
                 onChange={(e) => setVaultMintStr(e.target.value)}
-                placeholder="Mint pubkey (base58)"
+                placeholder="Paste the token mint address from a block explorer or wallet"
               />
             </div>
             <div className="btn-row">
@@ -1497,12 +1514,12 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                 disabled={busy || !program || !wallet.publicKey || !onChain || onChain.vaultInitialized}
                 onClick={onInitVault}
               >
-                Initialize vault
+                Turn vault on for this token
               </button>
             </div>
             <div className="field-row" style={{ marginTop: '0.75rem' }}>
               <div className="field">
-                <label htmlFor="depamt">Deposit amount (smallest units)</label>
+                <label htmlFor="depamt">Amount to deposit (smallest units)</label>
                 <input id="depamt" type="text" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} />
               </div>
               <button
@@ -1511,14 +1528,21 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                 disabled={busy || !program || !wallet.publicKey || !onChain?.vaultInitialized}
                 onClick={onDeposit}
               >
-                Deposit to vault
+                Deposit into vault
               </button>
             </div>
+            <p className="muted" style={{ marginTop: '0.35rem', fontSize: '0.82rem' }}>
+              “Smallest units” are the tiny increments of the token (often what wallets show as the raw number before
+              decimals).
+            </p>
           </div>
 
           <div className="panel">
-            <h2>Vault safety</h2>
-            <p className="muted">While frozen, new proposals and releases are blocked; deposits still land.</p>
+            <h2>Emergency pause</h2>
+            <p className="muted">
+              While paused, <strong>new payout requests and payments stop</strong>. Deposits can still arrive. Team lead
+              only.
+            </p>
             <div className="btn-row">
               <button
                 type="button"
@@ -1526,7 +1550,7 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                 disabled={busy || !program || !wallet.publicKey || !onChain || onChain.frozen}
                 onClick={() => onSetFrozen(true)}
               >
-                Freeze vault
+                Pause payouts
               </button>
               <button
                 type="button"
@@ -1534,16 +1558,16 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                 disabled={busy || !program || !wallet.publicKey || !onChain || !onChain.frozen}
                 onClick={() => onSetFrozen(false)}
               >
-                Unfreeze
+                Resume payouts
               </button>
             </div>
           </div>
 
           <div className="panel">
-            <h2>Execute gate — artifact</h2>
+            <h2>Proof before paying</h2>
             <p className="muted">
-              When enabled, <code>execute_release</code> requires a non-zero <code>artifact_sha256</code> on the proposal
-              (team lead only to toggle).
+              When this is on, the team must attach a <strong>delivery proof</strong> (a file fingerprint) to a payout
+              request before money can be sent. Good for milestones. Team lead only.
             </p>
             <div className="btn-row">
               <button
@@ -1552,7 +1576,7 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                 disabled={busy || !program || !wallet.publicKey || !onChain || onChain.requireArtifactForExecute}
                 onClick={() => onSetRequireArtifact(true)}
               >
-                Require artifact before execute
+                Require proof before paying
               </button>
               <button
                 type="button"
@@ -1560,17 +1584,17 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                 disabled={busy || !program || !wallet.publicKey || !onChain || !onChain.requireArtifactForExecute}
                 onClick={() => onSetRequireArtifact(false)}
               >
-                Allow execute without artifact
+                Allow paying without proof
               </button>
             </div>
           </div>
 
           <div className="panel">
-            <h2>Automation — split crank</h2>
+            <h2>Automatic split payouts (advanced)</h2>
             <p className="muted">
-              On-chain automation moves up to <code>min(vault, max_per_tick)</code> each crank, split by bps. Anyone can
-              pay fees to <code>crank_automation</code> when <code>next_eligible_ts</code> has passed. Older projects may
-              need a one-time layout upgrade before configuring.
+              Periodically move a capped amount from the vault and split it across wallets by share. Anyone can trigger a
+              run after the wait time; your wallet pays the small Solana network fee. Older projects may need the one-time
+              upgrade first.
             </p>
             <div className="btn-row">
               <button
@@ -1579,15 +1603,15 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                 disabled={busy || !program || !wallet.publicKey || !projectPda}
                 onClick={onUpgradeProjectLayout}
               >
-                Upgrade project layout (one-time)
+                One-time upgrade for automation
               </button>
             </div>
             <div className="field-row" style={{ marginTop: '0.75rem' }}>
               <div className="field" style={{ maxWidth: '8rem' }}>
                 <label htmlFor="amode">Mode</label>
                 <select id="amode" value={autoMode} onChange={(e) => setAutoMode(e.target.value)}>
-                  <option value={String(AUTOMATION_MODE_NONE)}>0 — Off</option>
-                  <option value={String(AUTOMATION_MODE_SPLIT)}>1 — Split crank</option>
+                  <option value={String(AUTOMATION_MODE_NONE)}>Off</option>
+                  <option value={String(AUTOMATION_MODE_SPLIT)}>Split payouts</option>
                 </select>
               </div>
               <label className="toggle-row" style={{ marginTop: '1.5rem' }}>
@@ -1601,45 +1625,45 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
             </div>
             <div className="field-row">
               <div className="field">
-                <label htmlFor="aint">Interval (sec)</label>
+                <label htmlFor="aint">Wait between runs (seconds)</label>
                 <input id="aint" type="text" value={autoInterval} onChange={(e) => setAutoInterval(e.target.value)} />
               </div>
               <div className="field">
-                <label htmlFor="amax">Max per tick (atoms)</label>
+                <label htmlFor="amax">Max per run (smallest units)</label>
                 <input id="amax" type="text" value={autoMaxPerTick} onChange={(e) => setAutoMaxPerTick(e.target.value)} />
               </div>
               <div className="field">
-                <label htmlFor="anext">Next eligible (unix, blank = now)</label>
+                <label htmlFor="anext">Next run after (Unix time, blank = now)</label>
                 <input id="anext" type="text" value={autoNextTs} onChange={(e) => setAutoNextTs(e.target.value)} />
               </div>
             </div>
             <div className="field">
-              <label htmlFor="arec">Recipients (comma or newline)</label>
+              <label htmlFor="arec">Wallets to pay (comma or new line)</label>
               <textarea
                 id="arec"
                 className="compact"
                 value={autoRecipientsText}
                 onChange={(e) => setAutoRecipientsText(e.target.value)}
                 spellCheck={false}
-                placeholder="One base58 pubkey per line or comma-separated"
+                placeholder="One wallet address per line"
               />
             </div>
             <div className="field">
-              <label htmlFor="abps">Bps per recipient (same order)</label>
+              <label htmlFor="abps">Share per wallet (points out of 10,000 — same order)</label>
               <input
                 id="abps"
                 type="text"
                 value={autoBpsText}
                 onChange={(e) => setAutoBpsText(e.target.value)}
-                placeholder="5000,5000"
+                placeholder="e.g. 5000,5000 for a 50/50 split"
               />
             </div>
             <div className="btn-row">
               <button type="button" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onConfigureAutomation}>
-                Save automation on-chain
+                Save automation
               </button>
               <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onCrankAutomation}>
-                Crank now (connected wallet pays fee)
+                Run once now (your wallet pays the fee)
               </button>
             </div>
           </div>
@@ -1666,10 +1690,10 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
               }
               return (
                 <div className="panel">
-                  <h2>Match policy to vault settings</h2>
+                  <h2>Match rules to vault settings</h2>
                   <p className="muted">
-                    This policy recommends requiring a deliverable hash before execute (milestone escrow). Enable it on
-                    the project to align on-chain behavior.
+                    These rules suggest requiring a delivery proof before paying (typical for milestones). Turn that on
+                    under Setup so the chain matches.
                   </p>
                   <div className="btn-row">
                     <button
@@ -1678,7 +1702,7 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                       disabled={busy || !program || !wallet.publicKey}
                       onClick={() => onSetRequireArtifact(true)}
                     >
-                      Enable artifact gate on-chain
+                      Require proof before paying (on-chain)
                     </button>
                   </div>
                 </div>
@@ -1687,7 +1711,7 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
 
           <div className="panel">
             <div className="field-row" style={{ alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h2 style={{ margin: 0, flex: 1 }}>Advanced — raw JSON</h2>
+              <h2 style={{ margin: 0, flex: 1 }}>Advanced — raw rules file</h2>
               <button type="button" className="ghost" onClick={() => setShowAdvancedPolicy((v) => !v)}>
                 {showAdvancedPolicy ? 'Hide' : 'Show'}
               </button>
@@ -1695,48 +1719,50 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
             {showAdvancedPolicy && (
               <>
                 <p className="muted">
-                  Canonical JSON is hashed in-browser; only the digest is stored on-chain via set_policy.
+                  For developers: edit the full rules JSON here. We fingerprint it in your browser; only the fingerprint is
+                  saved on-chain when you apply.
                 </p>
                 <textarea value={policyText} onChange={(e) => setPolicyText(e.target.value)} spellCheck={false} />
               </>
             )}
             <div className="btn-row" style={{ marginTop: showAdvancedPolicy ? '0.75rem' : 0 }}>
               <button type="button" className="ghost" onClick={onValidate}>
-                Validate
+                Check rules
               </button>
               <button type="button" className="ghost" onClick={onHash}>
-                Show hash
+                Show fingerprint
               </button>
               <button type="button" disabled={busy || !program || !wallet.publicKey} onClick={onApplyPolicy}>
-                Apply on-chain
+                Save rules on-chain
               </button>
             </div>
           </div>
 
           <div className="panel">
-            <h2>Payout simulator</h2>
+            <h2>“What if” calculator (shareable link)</h2>
             <p className="muted">
-              Share a read-only link so finance can try deposit math without a wallet (policy is embedded as base64 in the
-              URL — keep policies small).
+              Send finance a read-only link to try deposit math — no wallet. The rules are tucked inside the link, so keep
+              the team small if the link gets long.
             </p>
             <div className="field-row">
               <div className="field">
-                <label htmlFor="dep">Deposit (smallest units)</label>
+                <label htmlFor="dep">Sample deposit (smallest units)</label>
                 <input id="dep" type="text" value={depositSim} onChange={(e) => setDepositSim(e.target.value)} />
               </div>
               <button type="button" className="ghost" onClick={onSimulate}>
-                Simulate
+                Try it here
               </button>
               <button type="button" className="ghost" onClick={onCopySimulatorLink}>
-                Copy simulator link
+                Copy link
               </button>
             </div>
           </div>
 
           <div className="panel">
-            <h2>CSV → splits</h2>
+            <h2>Import splits from a spreadsheet</h2>
             <p className="muted">
-              Rows: <code>payee,bps</code>. Lines with <code>#</code> are comments. Merges into the current policy JSON.
+              Each row: <code>wallet_address,share_points</code> (share is points out of 10,000). Lines starting with{' '}
+              <code>#</code> are notes. This merges into the rules you are editing above.
             </p>
             <textarea
               className="compact"
@@ -1747,21 +1773,23 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
             />
             <div className="btn-row">
               <button type="button" className="ghost" onClick={onMergeCsvSplits}>
-                Merge into policy
+                Import into rules
               </button>
             </div>
           </div>
 
           <div className="panel">
-            <h2>Diff vs baseline</h2>
-            <p className="muted">Paste a baseline JSON or copy the current draft as baseline, then compare line-by-line.</p>
+            <h2>Compare to an older version</h2>
+            <p className="muted">
+              Paste an older rules file, or save your current draft as the baseline, then see line-by-line changes.
+            </p>
             <textarea className="compact" value={baselineText} onChange={(e) => setBaselineText(e.target.value)} spellCheck={false} />
             <div className="btn-row">
               <button type="button" className="ghost" onClick={() => setBaselineText(policyText)}>
-                Use draft as baseline
+                Use current draft as baseline
               </button>
               <button type="button" className="ghost" onClick={onDiff}>
-                Line diff
+                Show line-by-line diff
               </button>
             </div>
           </div>
@@ -1771,22 +1799,23 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
       {tab === 'ledger' && (
         <>
           <div className="panel">
-            <h2>Release pipeline</h2>
+            <h2>Payout requests</h2>
             <p className="muted">
-              Propose as team lead, then each approver signs <strong>Approve</strong> with the same proposal #. After
-              timelock, anyone can <strong>Execute</strong> one or more tranches up to the approved cap (recipient needs an
-              ATA for the vault mint). If <strong>Artifact gate</strong> is on (Setup), attach a deliverable hash before
-              execute. Use <strong>Cancel</strong> as lead while pending or in timelock — not after any tranche has moved
-              funds.
+              <strong>1.</strong> Team lead starts a request with a max amount, wait time, and who gets paid.{' '}
+              <strong>2.</strong> Enough approvers tap <strong>Approve</strong> (same request number).{' '}
+              <strong>3.</strong> After the wait, anyone can tap <strong>Send payment</strong> for part or all of what is
+              left. The recipient must already use that token in their wallet (same coin as the vault). If{' '}
+              <strong>Proof before paying</strong> is on in Setup, add a delivery proof first. Lead can{' '}
+              <strong>Cancel</strong> while it is still pending — not after money has moved.
             </p>
             <div className="form-grid">
               <div className="field-row">
                 <div className="field">
-                  <label htmlFor="rel-amt">Proposed cap (smallest units)</label>
+                  <label htmlFor="rel-amt">Max amount for this request (smallest units)</label>
                   <input id="rel-amt" type="text" value={relAmount} onChange={(e) => setRelAmount(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label htmlFor="rel-tl">Timelock (seconds)</label>
+                  <label htmlFor="rel-tl">Wait after approval (seconds)</label>
                   <input id="rel-tl" type="text" value={relTimelock} onChange={(e) => setRelTimelock(e.target.value)} />
                 </div>
                 <button
@@ -1797,25 +1826,25 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                     setErr(null);
                     const r = parsePolicyJson(policyText);
                     if (!r.ok) {
-                      setErr(`Cannot read policy for default timelock: ${r.error}`);
+                      setErr(`Could not read your rules for the default wait time: ${r.error}`);
                       return;
                     }
                     setRelTimelock(String(policyDefaultTimelockSecs(r.policy)));
-                    setStatus(`Timelock set to policy default (${policyDefaultTimelockSecs(r.policy)}s).`);
+                    setStatus(`Wait time set to your rules default (${policyDefaultTimelockSecs(r.policy)} seconds).`);
                   }}
                 >
-                  Use policy default
+                  Use rules default
                 </button>
               </div>
               {policyPayees.length > 0 && (
                 <div className="field" style={{ maxWidth: '28rem' }}>
-                  <label htmlFor="rel-pick">Payee quick pick (from policy splits)</label>
+                  <label htmlFor="rel-pick">Pick from your split list</label>
                   <select
                     id="rel-pick"
                     value={policyPayees.includes(relRecipient.trim()) ? relRecipient.trim() : ''}
                     onChange={(e) => setRelRecipient(e.target.value)}
                   >
-                    <option value="">— Paste custom recipient below —</option>
+                    <option value="">— Or type a wallet address below —</option>
                     {policyPayees.map((pk) => (
                       <option key={pk} value={pk}>
                         {shortAddr(pk, 6, 6)}
@@ -1825,77 +1854,77 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                 </div>
               )}
               <div className="field">
-                <label htmlFor="rel-rec">Recipient wallet</label>
+                <label htmlFor="rel-rec">Recipient wallet address</label>
                 <input
                   id="rel-rec"
                   type="text"
                   value={relRecipient}
                   onChange={(e) => setRelRecipient(e.target.value)}
-                  placeholder="Recipient pubkey (base58)"
+                  placeholder="Paste the recipient’s Solana wallet address"
                 />
               </div>
             </div>
             <div className="field" style={{ maxWidth: '22rem' }}>
-              <label htmlFor="exec-tranche">Execute tranche (smallest units)</label>
+              <label htmlFor="exec-tranche">Amount to send now (smallest units)</label>
               <input
                 id="exec-tranche"
                 type="text"
                 value={execTrancheAmount}
                 onChange={(e) => setExecTrancheAmount(e.target.value)}
-                placeholder="Leave blank to release full remainder"
+                placeholder="Leave blank to send everything still allowed"
               />
             </div>
             <div className="btn-row">
               <button type="button" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onProposeRelease}>
-                Propose release
+                Start payout request
               </button>
               <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onApproveRelease}>
-                Approve (my wallet)
+                Approve with my wallet
               </button>
               <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onExecuteRelease}>
-                Execute
+                Send payment
               </button>
               <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onCancelProposal}>
-                Cancel (lead)
+                Cancel request (lead)
               </button>
             </div>
           </div>
 
           <div className="panel">
-            <h2>Artifacts & disputes</h2>
+            <h2>Proof & disputes</h2>
             <p className="muted">
-              Same proposal ID for all actions. Open dispute: lead or approver. Resolve: lead only. Execution is blocked
-              while <code>dispute_active</code>.
+              Use the <strong>same payout request number</strong> for each step. Open a dispute: team lead or any approver.
+              Close it: lead only. While a dispute is open, payments on that request are blocked.
             </p>
             <div className="form-grid">
               <div className="field-row">
                 <div className="field" style={{ flex: '0 0 6rem' }}>
-                  <label htmlFor="opid">Proposal</label>
+                  <label htmlFor="opid">Request #</label>
                   <input id="opid" type="number" min={0} value={opsProposalId} onChange={(e) => setOpsProposalId(e.target.value)} />
                 </div>
               </div>
               <div className="field">
-                <label htmlFor="ah">Artifact SHA-256 (64 hex)</label>
+                <label htmlFor="ah">File fingerprint (SHA-256, 64 hex characters)</label>
                 <input id="ah" type="text" placeholder="64 hex characters" value={artHex} onChange={(e) => setArtHex(e.target.value)} />
               </div>
               <div className="field-row">
                 <div className="field">
-                  <label htmlFor="au">URI</label>
+                  <label htmlFor="au">Link to file (optional)</label>
                   <input id="au" type="text" value={artUri} onChange={(e) => setArtUri(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label htmlFor="al">Label</label>
+                  <label htmlFor="al">Short label</label>
                   <input id="al" type="text" value={artLabel} onChange={(e) => setArtLabel(e.target.value)} />
                 </div>
               </div>
               <div className="field" style={{ maxWidth: '12rem' }}>
-                <label htmlFor="am">Milestone id</label>
+                <label htmlFor="am">Milestone label (optional)</label>
                 <input id="am" type="text" value={artMilestone} onChange={(e) => setArtMilestone(e.target.value)} />
               </div>
             </div>
             <div className="btn-row">
               <button type="button" disabled={busy || !program || !wallet.publicKey} onClick={onAttachArtifact}>
-                Attach artifact
+                Attach delivery proof
               </button>
               <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey} onClick={onOpenDispute}>
                 Open dispute
@@ -1907,14 +1936,16 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
           </div>
 
           <div className="panel">
-            <h2>Audit export</h2>
-            <p className="muted">JSON bundle of the loaded project, vault fields, and decoded proposals (refresh Overview first).</p>
+            <h2>Download records</h2>
+            <p className="muted">
+              Export everything you see for this project (refresh Overview first so numbers are current).
+            </p>
             <div className="btn-row">
               <button type="button" className="ghost" disabled={!onChain} onClick={onExportAudit}>
-                Download JSON
+                Download full report (JSON)
               </button>
               <button type="button" className="ghost" disabled={!onChain} onClick={onExportCsv}>
-                Download proposals CSV
+                Download payout list (CSV)
               </button>
             </div>
           </div>
