@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "protocol_version": "1",
-  "name": "lithos-widgets",
-  "description": "Embeddable read-only Lithos treasury status widgets and parent-page integration. Human checklist: docs/HOST-WIDGET-INTEGRATION.md in the repo.",
+  "name": "vault-widgets",
+  "description": "Embeddable read-only Vault treasury status widgets and parent-page integration. Human checklist: docs/HOST-WIDGET-INTEGRATION.md in the repo.",
   "manifest_url_path": "/widget-manifest.json",
   "widgets": [
     {

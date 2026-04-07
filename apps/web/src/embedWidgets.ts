@@ -1,5 +1,5 @@
 /**
- * URL builders and copy-paste snippets for embedding Lithos (treasury status) in other apps.
+ * URL builders and copy-paste snippets for embedding Vault (treasury status) in other apps.
  * See Widget Studio in the main app for interactive configuration.
  */
 

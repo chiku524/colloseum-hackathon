@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Lithos  creator treasury on Solana">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Vault — secure creator treasury on Solana">
   <defs>
     <linearGradient id="og-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#06080c" />
@@ -6,12 +6,12 @@
       <stop offset="100%" stop-color="#121a24" />
     </linearGradient>
     <linearGradient id="og-card" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#4a9fe8" />
-      <stop offset="0.55" stop-color="#3d8bd4" />
-      <stop offset="1" stop-color="#1e4a6e" />
+      <stop stop-color="#3d7fd4" />
+      <stop offset="0.5" stop-color="#2d6bb8" />
+      <stop offset="1" stop-color="#15365c" />
     </linearGradient>
     <filter id="og-glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="6" result="b" />
+      <feGaussianBlur stdDeviation="5" result="b" />
       <feMerge>
         <feMergeNode in="b" />
         <feMergeNode in="SourceGraphic" />
@@ -19,19 +19,47 @@
     </filter>
   </defs>
   <rect width="1200" height="630" fill="url(#og-bg)" />
-  <circle cx="1020" cy="120" r="180" fill="#4a9fe8" opacity="0.06" />
-  <circle cx="140" cy="520" r="220" fill="#7c6cf0" opacity="0.05" />
+  <circle cx="1020" cy="120" r="180" fill="#3d7fd4" opacity="0.06" />
+  <circle cx="140" cy="520" r="220" fill="#5ecf9a" opacity="0.04" />
   <rect x="96" y="186" width="88" height="88" rx="20" fill="url(#og-card)" />
+  <!-- Vault door (scaled) -->
+  <rect
+    x="108"
+    y="198"
+    width="64"
+    height="64"
+    rx="11"
+    fill="rgba(4,12,24,0.55)"
+    stroke="rgba(255,255,255,0.16)"
+    stroke-width="1.5"
+  />
+  <circle cx="114" cy="208" r="2" fill="rgba(255,255,255,0.24)" />
+  <circle cx="114" cy="230" r="2" fill="rgba(255,255,255,0.24)" />
+  <circle cx="114" cy="252" r="2" fill="rgba(255,255,255,0.24)" />
+  <circle cx="166" cy="208" r="2" fill="rgba(255,255,255,0.24)" />
+  <circle cx="166" cy="230" r="2" fill="rgba(255,255,255,0.24)" />
+  <circle cx="166" cy="252" r="2" fill="rgba(255,255,255,0.24)" />
   <path
-    d="M118 220h44M118 232h44M118 244h28"
+    d="M116 224h48M116 230h48M116 236h48"
     fill="none"
-    stroke="rgba(0,0,0,0.35)"
-    stroke-width="3"
+    stroke="rgba(0,0,0,0.45)"
+    stroke-width="3.2"
     stroke-linecap="round"
   />
-  <circle cx="162" cy="248" r="8" fill="#5ee0c8" filter="url(#og-glow)" />
+  <circle
+    cx="140"
+    cy="230"
+    r="13"
+    stroke="rgba(255,255,255,0.28)"
+    stroke-width="2.2"
+    fill="rgba(0,0,0,0.22)"
+  />
+  <circle cx="140" cy="230" r="5.5" stroke="rgba(255,255,255,0.14)" stroke-width="1.2" fill="none" />
+  <path d="M150 230h10" stroke="rgba(255,255,255,0.32)" stroke-width="2.4" stroke-linecap="round" />
+  <circle cx="168" cy="254" r="7" fill="#5ee0c8" filter="url(#og-glow)" />
+  <circle cx="168" cy="254" r="2.8" fill="#e8fffa" opacity="0.55" />
   <text x="210" y="268" fill="#e9eef5" font-family="system-ui, Segoe UI, sans-serif" font-size="72" font-weight="700" letter-spacing="-0.03em">
-    Lithos
+    Vault
   </text>
   <text
     x="210"
@@ -41,7 +69,7 @@
     font-size="28"
     font-weight="500"
   >
-    Creator treasury on Solana
+    Secure creator treasury on Solana
   </text>
   <text
     x="96"

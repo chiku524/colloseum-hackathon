@@ -1,19 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Lithos">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Vault">
   <defs>
-    <linearGradient id="fav-g" x1="4" y1="2" x2="30" y2="32" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4a9fe8" />
-      <stop offset="0.55" stop-color="#3d8bd4" />
-      <stop offset="1" stop-color="#1e4a6e" />
+    <linearGradient id="fv" x1="4" y1="2" x2="30" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3d7fd4" />
+      <stop offset="0.5" stop-color="#2d6bb8" />
+      <stop offset="1" stop-color="#15365c" />
     </linearGradient>
   </defs>
-  <rect width="32" height="32" rx="7" fill="url(#fav-g)" />
+  <rect width="32" height="32" rx="7" fill="url(#fv)" />
+  <rect
+    x="6"
+    y="5"
+    width="20"
+    height="22"
+    rx="3.5"
+    fill="rgba(4,12,24,0.55)"
+    stroke="rgba(255,255,255,0.14)"
+    stroke-width="0.7"
+  />
   <path
-    d="M8 11h16M8 16h16M8 21h10"
-    fill="none"
-    stroke="rgba(0,0,0,0.4)"
+    d="M9 13.5h14M9 16h14M9 18.5h14"
+    stroke="rgba(0,0,0,0.45)"
     stroke-width="1.1"
     stroke-linecap="round"
   />
-  <circle cx="23" cy="22" r="2.8" fill="#5ee0c8" />
-  <circle cx="23" cy="22" r="1.1" fill="#e8fffa" opacity="0.6" />
+  <circle cx="16" cy="16" r="3.8" stroke="rgba(255,255,255,0.26)" stroke-width="0.9" fill="rgba(0,0,0,0.18)" />
+  <path d="M18.5 16h2.2" stroke="rgba(255,255,255,0.28)" stroke-width="0.9" stroke-linecap="round" />
+  <circle cx="24" cy="23.5" r="2.4" fill="#5ee0c8" />
+  <circle cx="24" cy="23.5" r="0.9" fill="#e8fffa" opacity="0.55" />
 </svg>

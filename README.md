@@ -1,6 +1,6 @@
 # colloseum-hackathon
 
-Solana **Creator Team Treasury** (**Lithos** web app) — on-chain vault, multi-approver releases, timelocks, policy hashing, and a team-lead web dashboard with optional **Vercel** API/embed support.
+Solana **Creator Team Treasury** (**Vault** web app) — on-chain vault, multi-approver releases, timelocks, policy hashing, and a team-lead web dashboard with optional **Vercel** API/embed support.
 
 **New here?** Read **[`docs/ESSENTIALS.md`](docs/ESSENTIALS.md)** for what the app is for, roles, workflows, and configuration. Roadmap: [`docs/CREATOR-TREASURY-BUILD-PLAN.md`](docs/CREATOR-TREASURY-BUILD-PLAN.md).
 
