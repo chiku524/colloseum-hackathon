@@ -2,6 +2,8 @@
 
 These are the properties the `creator-treasury` program is designed to uphold. Formal verification is out of scope; **integration tests** and **code review** are the enforcement mechanisms for now.
 
+For a **non-formal overview** of the product and how to run it, see **[`ESSENTIALS.md`](./ESSENTIALS.md)**.
+
 The sections below are ordered by phase so you can see how later phases extend earlier guarantees without rewriting the whole doc.
 
 ## Roles and authority
@@ -19,15 +21,15 @@ The sections below are ordered by phase so you can see how later phases extend e
 - **Vault state PDA** is `("vault", project.key())`.
 - **Vault token account** is the **ATA** of `vault_state` for `vault_state.mint`, with **off-curve owner** (PDA) allowed.
 - **Deposits** move tokens **from** `depositor_token_account` **to** `vault_token_account` with `depositor` as SPL authority; mint must match vault mint.
-- **Releases** move `proposal.amount` **from** vault ATA **to** `recipient_token_account`, signed by the **vault_state PDA** via CPI seeds.
+- **Releases** move up to the **approved cap** (`proposal.amount`) in one or more tranches. Each `execute_release` transfers `release_amount` **from** vault ATA **to** `recipient_token_account`, signed by the **vault_state PDA** via CPI seeds. **`proposal.released_so_far`** tracks cumulative paid; when it equals **`amount`**, status becomes **`Executed`**.
 
 ## Proposals and timelock
 
 - Proposal PDA: `("proposal", project.key(), proposal_id_u64_le)` where `proposal_id` is taken from `project.next_proposal_id` at creation time, then **incremented**.
-- **Status flow:** `Pending` → (threshold met) → `Timelock` → `Executed`, or `Cancelled` by lead while still `Pending` or `Timelock`.
+- **Status flow:** `Pending` → (threshold met) → `Timelock` → `Executed` when the **full cap** is paid, or `Cancelled` by lead while still `Pending` or `Timelock` **and** `released_so_far == 0`.
 - **Threshold:** When the number of distinct approvers recorded in `approved_mask` reaches `approval_threshold`, `timelock_ends_at = now + timelock_duration_secs` and status becomes `Timelock`. **`timelock_duration_secs` may be zero** (useful for tests and instant release after approvals).
 - **Double approval:** An approver cannot set their bit twice (`AlreadyApproved`).
-- **Execute:** Requires `status == Timelock`, `now >= timelock_ends_at`, `!project.frozen`, vault balance `≥ amount`, recipient ATA **owner == proposal.recipient**, recipient ATA **mint == vault mint**. If **`project.require_artifact_for_execute`**, **`proposal.artifact_sha256`** must be non-zero.
+- **Execute:** Requires `status == Timelock`, `now >= timelock_ends_at`, `!project.frozen`, `release_amount > 0`, `released_so_far + release_amount ≤ amount`, vault balance `≥ release_amount`, recipient ATA **owner == proposal.recipient**, recipient ATA **mint == vault mint**. If **`project.require_artifact_for_execute`**, **`proposal.artifact_sha256`** must be non-zero. Between tranches, status stays **`Timelock`** until the cap is fully settled.
 
 ## Freeze
 
@@ -63,7 +65,7 @@ The sections below are ordered by phase so you can see how later phases extend e
 - **Optional on-chain gate:** **`Project.require_artifact_for_execute`** (default **`false`** at **`initialize_project`**) can be toggled by the team lead via **`set_require_artifact`**. When **`true`**, **`execute_release`** fails if **`proposal.artifact_sha256`** is still all zero (**`ArtifactRequiredForExecute`**). Approvals and timelock are unchanged; only execution is gated.
 - **Policy hooks:** artifact attachment remains **optional** for projects with the flag off; teams can still treat hashes as operational policy off-chain.
 
-## Phase D — Disputes (execute gate)
+## Phase D — Disputes and partial releases (execute gates)
 
 - **`ReleaseProposal.dispute_active`:** boolean, default `false` at proposal creation.
 - **`open_dispute`**
@@ -76,7 +78,8 @@ The sections below are ordered by phase so you can see how later phases extend e
   - **Requires** an active dispute; otherwise **`DisputeNotActive`**.
   - Clears **`dispute_active`**; emits **`DisputeResolved`**.
 - **`execute_release`:** if **`dispute_active`**, execution fails with **`DisputeActive`** regardless of timelock and balance. Approvals and timelock can already be satisfied; the dispute is an explicit **hard stop** until the lead resolves it.
-- **Non-goals in this slice:** partial payouts, tranches, third-party arbitration, and automatic dispute timeout are **not** implemented; those belong in later iterations of Phase D / product policy.
+- **Partial releases / tranches:** **`execute_release(proposal_id, release_amount)`** may be called multiple times per proposal until **`released_so_far == amount`**. **`PartialReleaseExceedsCap`** if `release_amount` exceeds the remainder. **`cancel_proposal`** fails with **`CannotCancelAfterPartialRelease`** once **`released_so_far > 0`**. Event **`Released`** includes **`amount`** (this tranche), **`cumulative_released`**, and **`fully_settled`**.
+- **Non-goals in this slice:** third-party arbitration, automatic dispute timeout, and changing recipient mid-proposal are **not** implemented.
 
 ## Phase E — Integrations (partial in this repo)
 

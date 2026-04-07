@@ -5,11 +5,7 @@
 `BYZFRa7NzDB7bKwxxkntewHfWwjBBqM6nsfrVeakBHjV`
 
 - **Do not reuse this keypair for mainnet production.** Generate a fresh keypair, run `anchor keys sync`, and treat upgrade authority like root access.
-- Before `anchor build` / `anchor deploy`, copy (or symlink) this file to:
-
-  `target/deploy/creator_treasury-keypair.json`
-
-  so the build artifact and `declare_id!` stay aligned.
+- From the **repo root**, run **`npm run prepare:keypair`** to copy this file to **`target/deploy/creator_treasury-keypair.json`** so `anchor build` / Docker deploy and `declare_id!` stay aligned.
 
 If you rotate the keypair, update:
 

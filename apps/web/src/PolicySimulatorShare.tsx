@@ -4,10 +4,10 @@ import {
   decodePolicyFromQueryParam,
   simulatePayout,
   validatePolicy,
-  type TreasuryPolicyV1,
+  type TreasuryPolicy,
 } from './policy';
 
-function readPolicyFromUrl(): { policy: TreasuryPolicyV1 | null; error: string | null } {
+function readPolicyFromUrl(): { policy: TreasuryPolicy | null; error: string | null } {
   const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const p = sp.get('p');
   if (!p) return { policy: null, error: 'Missing query parameter p= (base64-encoded policy JSON).' };
@@ -20,7 +20,7 @@ function readPolicyFromUrl(): { policy: TreasuryPolicyV1 | null; error: string |
 
 export function PolicySimulatorShare() {
   const initial = useMemo(() => readPolicyFromUrl(), []);
-  const [policy] = useState<TreasuryPolicyV1 | null>(initial.policy);
+  const [policy] = useState<TreasuryPolicy | null>(initial.policy);
   const [loadErr] = useState<string | null>(initial.error);
   const [depositSim, setDepositSim] = useState('1000000');
   const [status, setStatus] = useState<string | null>(null);

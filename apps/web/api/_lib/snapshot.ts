@@ -48,6 +48,8 @@ function readOnlyProvider(connection: Connection): AnchorProvider {
 export type ProposalSnapshotJson = {
   proposalId: string;
   amount: string;
+  releasedSoFar: string;
+  amountRemaining: string;
   recipient: string;
   status: string;
   statusCode: number;
@@ -126,9 +128,14 @@ export async function buildProjectSnapshot(
     const prop = await program.account.releaseProposal.fetchNullable(propPda);
     if (!prop) continue;
     const st = Number(prop.status);
+    const cap = BigInt(prop.amount.toString());
+    const rel = BigInt(prop.releasedSoFar.toString());
+    const remaining = cap >= rel ? cap - rel : 0n;
     proposalRows.push({
       proposalId: String(i),
       amount: prop.amount.toString(),
+      releasedSoFar: prop.releasedSoFar.toString(),
+      amountRemaining: remaining.toString(),
       recipient: prop.recipient.toBase58(),
       status: statusLabel(st),
       statusCode: st,

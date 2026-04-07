@@ -1,0 +1,29 @@
+# Deploy apps/web to Vercel production when main updates.
+# Requires repository secret: VERCEL_TOKEN_HACKATHON (Vercel account token with deploy access).
+# Project link: apps/web/.vercel/project.json (orgId + projectId).
+
+name: Vercel Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_HACKATHON }}
+        run: npx vercel@latest deploy --prod --yes --cwd apps/web --token "$VERCEL_TOKEN"

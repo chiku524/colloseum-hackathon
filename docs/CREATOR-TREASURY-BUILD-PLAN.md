@@ -2,6 +2,8 @@
 
 This document describes phased delivery for a **Solana-native ops layer for creator team leads**: policy-defined payouts, staged settlements, dispute windows, and cryptographic accountability. It is written so each phase produces **production-shaped** artifacts (specs, tests, security thinking), not throwaway demos.
 
+For **what the product is**, **who uses it**, and **day-to-day operations** (env, devnet, Vercel), see **[`ESSENTIALS.md`](./ESSENTIALS.md)**.
+
 ---
 
 ## 1. Product vision

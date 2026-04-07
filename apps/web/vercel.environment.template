@@ -1,0 +1,26 @@
+# Template only — no real secrets. Generate a filled file:
+#   npm run vercel:generate-env
+#
+# Vercel UI: Project → Settings → Environment Variables → Import .env
+# Or CLI (after `cd apps/web && vercel link`):
+#   npm run vercel:apply-env
+
+# --- Browser (Vite build) ---
+VITE_RPC_URL=https://api.devnet.solana.com
+VITE_PROGRAM_ID=BYZFRa7NzDB7bKwxxkntewHfWwjBBqM6nsfrVeakBHjV
+
+# --- Serverless (api/v1/*) ---
+SOLANA_RPC_URL=https://api.devnet.solana.com
+TREASURY_API_SECRET=REPLACE_WITH_LONG_RANDOM_STRING
+JWT_EMBED_SECRET=REPLACE_WITH_DIFFERENT_LONG_RANDOM_MIN_16_CHARS
+WEBHOOK_SIGNING_SECRET=REPLACE_WITH_ANOTHER_LONG_RANDOM_MIN_16_CHARS
+
+# Optional — Vercel Cron → /api/cron/treasury-crank (every 10 min when deployed)
+# CRON_SECRET=match Vercel “Cron Secret” if you enable it
+# CRANK_TEAM_LEAD=...   # base58 team lead (same as dashboard)
+# CRANK_PROJECT_ID=0
+# CRANK_FEE_PAYER_JSON=[1,2,...]   # JSON array of fee payer secret key bytes (fund with SOL on that cluster)
+
+# Optional
+# WEBHOOK_DELIVERY_URL=https://discord.com/api/webhooks/...
+# VITE_API_BASE_URL=

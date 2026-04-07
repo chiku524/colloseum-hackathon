@@ -32,6 +32,8 @@ function badgeClassForStatus(code: number): string {
 type ProposalRow = {
   proposalId: string;
   amount: string;
+  releasedSoFar: string;
+  amountRemaining: string;
   recipient: string;
   status: string;
   statusCode: number;
@@ -121,7 +123,33 @@ export function PublicStatus() {
       if (r.ok) {
         const data = (await r.json()) as Record<string, unknown>;
         if (!data.error && typeof data.projectPda === 'string') {
-          const proposals = Array.isArray(data.proposals) ? data.proposals : [];
+          const raw = Array.isArray(data.proposals) ? data.proposals : [];
+          const proposals: ProposalRow[] = raw.map((row) => {
+            const r = row as Record<string, unknown>;
+            const amount = String(r.amount ?? '0');
+            const releasedSoFar = String(r.releasedSoFar ?? '0');
+            let amountRemaining = String(r.amountRemaining ?? '');
+            if (!amountRemaining) {
+              try {
+                const cap = BigInt(amount);
+                const rel = BigInt(releasedSoFar);
+                amountRemaining = (cap >= rel ? cap - rel : 0n).toString();
+              } catch {
+                amountRemaining = amount;
+              }
+            }
+            return {
+              proposalId: String(r.proposalId ?? ''),
+              amount,
+              releasedSoFar,
+              amountRemaining,
+              recipient: String(r.recipient ?? ''),
+              status: String(r.status ?? ''),
+              statusCode: Number(r.statusCode ?? 0),
+              artifactSha256Hex: String(r.artifactSha256Hex ?? ''),
+              disputeActive: Boolean(r.disputeActive),
+            };
+          });
           setState({
             kind: 'ok',
             projectPda: data.projectPda as string,
@@ -134,7 +162,7 @@ export function PublicStatus() {
             vaultInitialized: Boolean(data.vaultInitialized),
             vaultBalance: data.vaultBalance as string | undefined,
             mint: data.mint as string | undefined,
-            proposals: proposals as ProposalRow[],
+            proposals,
             rpcUsed: typeof data.rpcUsed === 'string' ? data.rpcUsed : undefined,
           });
           return;
@@ -218,9 +246,14 @@ export function PublicStatus() {
         const prop = await program.account.releaseProposal.fetchNullable(propPda);
         if (!prop) continue;
         const st = Number(prop.status);
+        const cap = BigInt(prop.amount.toString());
+        const rel = BigInt(prop.releasedSoFar.toString());
+        const remaining = cap >= rel ? cap - rel : 0n;
         proposalRows.push({
           proposalId: String(i),
           amount: prop.amount.toString(),
+          releasedSoFar: prop.releasedSoFar.toString(),
+          amountRemaining: remaining.toString(),
           recipient: prop.recipient.toBase58(),
           status: statusLabel(st),
           statusCode: st,
@@ -316,7 +349,8 @@ rpc (read): ${state.rpcUsed ?? 'client'}`}
                       <span className="proposal-meta">Proposal #{p.proposalId}</span>
                     </div>
                     <div className="proposal-meta">
-                      {p.amount} units → {shortAddr(p.recipient)} · artifact {shortAddr(p.artifactSha256Hex, 6, 6)}
+                      cap {p.amount} · released {p.releasedSoFar} · remaining {p.amountRemaining} → {shortAddr(p.recipient)} ·
+                      artifact {shortAddr(p.artifactSha256Hex, 6, 6)}
                       {p.disputeActive ? ' · dispute' : ''}
                     </div>
                   </div>

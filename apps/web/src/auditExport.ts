@@ -2,6 +2,8 @@ export type ProposalSnapshot = {
   proposalPda: string;
   proposalId: string;
   amount: string;
+  /** Approved cap; tranches sum to this. */
+  releasedSoFar: string;
   recipient: string;
   timelockDurationSecs: string;
   timelockEndsAt: string;
@@ -53,6 +55,7 @@ export function proposalsToCsv(rows: ProposalSnapshot[]): string {
     'proposal_id',
     'status',
     'amount',
+    'released_so_far',
     'recipient',
     'timelock_duration_secs',
     'timelock_ends_at',
@@ -70,6 +73,7 @@ export function proposalsToCsv(rows: ProposalSnapshot[]): string {
       p.proposalId,
       p.status,
       p.amount,
+      p.releasedSoFar,
       p.recipient,
       p.timelockDurationSecs,
       p.timelockEndsAt,

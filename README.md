@@ -1,69 +1,65 @@
 # colloseum-hackathon
 
-Solana **Creator Team Treasury** (Colosseum / Frontier) — on-chain vault, multi-approver releases, and timelocks. See `docs/CREATOR-TREASURY-BUILD-PLAN.md` for the full roadmap.
+Solana **Creator Team Treasury** — on-chain vault, multi-approver releases, timelocks, policy hashing, and a team-lead web dashboard with optional **Vercel** API/embed support.
+
+**New here?** Read **[`docs/ESSENTIALS.md`](docs/ESSENTIALS.md)** for what the app is for, roles, workflows, and configuration. Roadmap: [`docs/CREATOR-TREASURY-BUILD-PLAN.md`](docs/CREATOR-TREASURY-BUILD-PLAN.md).
 
 ## Repo layout
 
 | Path | Purpose |
 |------|---------|
-| `programs/creator-treasury` | Anchor program (**Phase A** implemented) |
-| `idl/creator_treasury.json` | IDL for clients/tests (regenerate with `anchor build` when possible) |
-| `tests/creator-treasury.ts` | Integration test — run via **`anchor test`** |
-| `docs/INVARIANTS-PHASE-A.md` | On-chain invariants and non-goals |
-| `keys/` | Dev program keypair (see `keys/README.md`) |
-| `scripts/solana-idea-spark.mjs` | Colosseum Copilot CLI for idea research |
-| `apps/web/api` | Vercel serverless: `/api/v1/project`, `/api/v1/embed-token`, `/api/v1/webhooks/emit` |
+| `programs/creator-treasury` | Anchor program |
+| `idl/creator_treasury.json` | IDL for clients, tests, and web (refresh via full `anchor build` when you change the program API) |
+| `tests/creator-treasury.ts` | Integration tests — **`anchor test`** |
+| `docs/ESSENTIALS.md` | **Operator guide**: product intent, concepts, env, commands |
+| `docs/INVARIANTS-PHASE-A.md` | On-chain invariants |
+| `docs/SECURITY-AND-EMBED.md` | API auth, embeds, webhooks, env |
+| `keys/` | Dev program keypair — see [`keys/README.md`](keys/README.md) |
+| `scripts/` | Docker Anchor build, devnet helpers, Vercel env generator, seed, Copilot CLI |
+| `apps/web` | Vite app + Vercel serverless `api/` — see [`apps/web/README.md`](apps/web/README.md) |
 
 ## Prerequisites
 
-- **Rust** (stable, recent) and **Solana CLI** (`solana --version`) — see Windows notes below if you do not use WSL
-- **Anchor 0.30.1** (`anchor --version`)
 - **Node 18+**
+- **Docker** (recommended) for **`anchor build`** without a full native Solana SBF toolchain
+- **Rust** (optional) for `cargo check -p creator-treasury` on the host
 
-### Anchor CLI (Cargo — recommended on Windows)
-
-Install from the matching tag. On **Rust 1.74+**, omit `--locked` (the v0.30.1 lockfile can fail to compile on newer compilers):
-
-```bash
-cargo install --git https://github.com/coral-xyz/anchor anchor-cli --tag v0.30.1 --force
-```
-
-Put **Cargo’s bin directory before npm’s** so `anchor` resolves to `anchor.exe` (not the Linux-only npm shim):
-
-- Bash: `export PATH="$HOME/.cargo/bin:$PATH"`
-
-### Solana on Windows (native, without WSL)
-
-1. Download **Solana** `solana-release-x86_64-pc-windows-msvc.tar.bz2` for **1.18.x** from [Solana releases](https://github.com/solana-labs/solana/releases), extract somewhere stable (e.g. `%USERPROFILE%\solana-install\solana-release`) and add its `bin` folder to `PATH`.
-2. Download **platform-tools** `platform-tools-windows-x86_64.tar.bz2` from [anza-xyz/platform-tools **v1.41**](https://github.com/anza-xyz/platform-tools/releases/tag/v1.41). Extract so you have `llvm`, `rust`, and `version.md` under:
-   - `%LOCALAPPDATA%\solana\v1.41\platform-tools\`
-3. From the repo root, create a **directory junction** (avoids symlink privilege errors during `cargo-build-sbf`):
-
-```bash
-node scripts/link-sbf-platform-tools.mjs
-```
-
-If `anchor build` still fails with **access denied**, run the terminal **once as Administrator**, or enable **Developer Mode** (Settings → System → For developers) so symlink creation succeeds.
-
-## Program (Phase A)
+## Program: check, build, test
 
 ```bash
 npm install
-cargo check -p creator-treasury
-node scripts/prepare-program-keypair.mjs
-anchor build
-anchor test
+npm run check:program          # host cargo check
+npm run prepare:keypair        # keys/ → target/deploy/ program keypair
+npm run build:program:docker   # Docker: anchor build --no-idl (recommended)
+npm test                       # anchor test (local validator + TS tests)
 ```
 
-`anchor test` starts a local validator, deploys the program, and runs `tests/creator-treasury.ts`. If you see **`no such command: build-sbf`**, install the [Solana CLI](https://docs.solanalabs.com/cli/install) (or a full Anchor toolchain) so **`cargo-build-sbf`** is available—`cargo check` alone is not enough to run **`anchor build`** / **`anchor test`**.
+Native **`anchor build`** / **`anchor test`** need **`cargo-build-sbf`** and a compatible toolchain (see Solana/Anchor docs). On Windows, Docker avoids many toolchain issues.
 
-To deploy to **devnet** (after `solana config set --url devnet` and funding the wallet):
+## Devnet: deploy and seed
+
+1. Fund the wallet that will pay rent and fees (often **~3 devnet SOL** for deploy).
+2. `npm run prepare:keypair`
+3. `npm run build:program:docker`
+4. `npm run devnet:deploy` — uses Docker Solana CLI. If **`keys/devnet-payer.json`** exists, it is used as the fee payer automatically; otherwise set **`FEE_PAYER_KEYPAIR`** or install **`~/.config/solana/id.json`**.
+5. `npm run seed:treasury:devnet` — demo flow; with **`--devnet`**, uses **`keys/devnet-payer.json`** when present.
+
+Helpers: `npm run devnet:help`, `npm run solana:devnet -- <solana args>`.
+
+## Web app
 
 ```bash
-node scripts/prepare-program-keypair.mjs
-anchor build
-anchor deploy --provider.cluster devnet
+cd apps/web && npm install && npm run dev
 ```
+
+See [`apps/web/README.md`](apps/web/README.md) and [`docs/ESSENTIALS.md`](docs/ESSENTIALS.md).
+
+## Vercel
+
+- **Root Directory:** `apps/web`
+- **Env:** `npm run vercel:generate-env` → import **`apps/web/.env.vercel.paste`** (gitignored). Template without secrets: **`apps/web/vercel.environment.template`**. Details in **`apps/web/.env.example`** and **`docs/SECURITY-AND-EMBED.md`**.
+- After changing **`VITE_*`**, trigger a new deployment.
+- **GitHub Actions:** pushes to **`main`** run **`.github/workflows/vercel-production.yml`** when the repo secret **`VERCEL_TOKEN_HACKATHON`** is set (create a token under [Vercel → Account → Tokens](https://vercel.com/account/tokens)). **`apps/web/.vercel/project.json`** must be present so the CLI resolves **nicholas-chikujis-projects / colloseum-hackathon**.
 
 ## Colosseum Copilot (idea research)
 
@@ -74,39 +70,6 @@ npm run ideas:spark
 npm run copilot:status
 ```
 
-## Web app (`apps/web`)
+## Program ID (dev / hackathon)
 
-Team-lead UI: **create project**, **init vault / deposit**, **policy** editor + simulator, **release** propose → approve → execute, artifacts/disputes, **JSON + CSV** audit export. Dev server:
-
-```bash
-cd apps/web && npm install && npm run dev
-```
-
-Optional: `VITE_RPC_URL`, `VITE_PROGRAM_ID` (defaults: devnet cluster + program id from `idl/creator_treasury.json`). On devnet, fund the wallet with SOL + token mint liquidity before depositing.
-
-**Public read-only status (no wallet):** open the app with `?view=status&team_lead=<pubkey>&project_id=<u64>`; add `&rpc=<https://...>` to override the RPC endpoint. For iframes, add `&embed=1`. **Policy simulator share:** `?view=simulate&p=<base64>` (use **Copy simulator link** in the Policy tab). See `docs/SECURITY-AND-EMBED.md`.
-
-### Seed script (local / devnet demo)
-
-After `anchor deploy` to your cluster, fund the payer wallet, then:
-
-```bash
-npm run seed:treasury
-npm run seed:treasury -- --devnet
-```
-
-Env: `RPC_URL`, `KEYPAIR_PATH`, `PROJECT_ID` (default `999`), `DEPOSIT_ATOMS`. Creates mint + project + vault + initial policy + deposit when missing.
-
-### Vercel (serverless API + static UI)
-
-Server routes live in `apps/web/api/`. **In the Vercel project (e.g. colloseum-hackathon), set Root Directory to `apps/web`.** If Root Directory is the monorepo root, the build will not pick up `api/` or `vercel.json` correctly.
-
-1. **Settings → General → Root Directory:** `apps/web`
-2. **Settings → Environment Variables:** `SOLANA_RPC_URL`, `TREASURY_API_SECRET`, `JWT_EMBED_SECRET` (≥16 chars), optional `WEBHOOK_SIGNING_SECRET`, `WEBHOOK_DELIVERY_URL` — see `apps/web/.env.example` and `docs/SECURITY-AND-EMBED.md`
-3. Redeploy
-
-**Local:** `cd apps/web && npx vercel dev` serves both Vite and `/api/*`.
-
-**Cursor Vercel plugin:** run `npx plugins add vercel/vercel-plugin` and accept the interactive install (was waiting on `Y` in the terminal).
-
-See `docs/CREATOR-TREASURY-BUILD-PLAN.md` for later phases.
+`BYZFRa7NzDB7bKwxxkntewHfWwjBBqM6nsfrVeakBHjV` — must match `keys/creator_treasury-dev-keypair.json` and `idl/creator_treasury.json`. **Do not reuse that keypair for production mainnet.**

@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program_pack::Pack;
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::spl_token::state::Account as SplTokenAccountState;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 declare_id!("BYZFRa7NzDB7bKwxxkntewHfWwjBBqM6nsfrVeakBHjV");
@@ -13,6 +15,12 @@ pub const STATUS_PENDING: u8 = 0;
 pub const STATUS_TIMELOCK: u8 = 1;
 pub const STATUS_EXECUTED: u8 = 2;
 pub const STATUS_CANCELLED: u8 = 3;
+
+pub const MAX_AUTO_RECIPIENTS: usize = 8;
+pub const AUTOMATION_MODE_NONE: u8 = 0;
+pub const AUTOMATION_MODE_SPLIT_CRANK: u8 = 1;
+/// `Project` body size before automation fields (Borsh, excludes 8-byte account discriminator).
+pub const PROJECT_LEGACY_BODY_LEN: usize = 315;
 
 #[program]
 pub mod creator_treasury {
@@ -66,6 +74,14 @@ pub mod creator_treasury {
         project.policy_hash = [0u8; 32];
         project.require_artifact_for_execute = false;
         project.bump = ctx.bumps.project;
+        project.automation_mode = AUTOMATION_MODE_NONE;
+        project.automation_paused = false;
+        project.automation_interval_secs = 0;
+        project.automation_next_eligible_ts = 0;
+        project.automation_max_per_tick = 0;
+        project.auto_recipient_count = 0;
+        project.auto_recipients = [Pubkey::default(); MAX_AUTO_RECIPIENTS];
+        project.auto_bps = [0u16; MAX_AUTO_RECIPIENTS];
 
         emit!(ProjectCreated {
             project: project.key(),
@@ -162,6 +178,7 @@ pub mod creator_treasury {
         prop.artifact_label_len = 0;
         prop.linked_milestone_id = 0;
         prop.dispute_active = false;
+        prop.released_so_far = 0;
         prop.bump = ctx.bumps.proposal;
 
         project.next_proposal_id = project
@@ -306,6 +323,7 @@ pub mod creator_treasury {
     pub fn cancel_proposal(ctx: Context<CancelProposal>, proposal_id: u64) -> Result<()> {
         let proposal = &mut ctx.accounts.proposal;
         require!(proposal.proposal_id == proposal_id, ErrorCode::InvalidProposal);
+        require!(proposal.released_so_far == 0, ErrorCode::CannotCancelAfterPartialRelease);
         require!(
             proposal.status == STATUS_PENDING || proposal.status == STATUS_TIMELOCK,
             ErrorCode::InvalidProposalState
@@ -318,7 +336,11 @@ pub mod creator_treasury {
         Ok(())
     }
 
-    pub fn execute_release(ctx: Context<ExecuteRelease>, proposal_id: u64) -> Result<()> {
+    pub fn execute_release(
+        ctx: Context<ExecuteRelease>,
+        proposal_id: u64,
+        release_amount: u64,
+    ) -> Result<()> {
         let project = &ctx.accounts.project;
         require!(!project.frozen, ErrorCode::VaultFrozen);
 
@@ -335,8 +357,18 @@ pub mod creator_treasury {
             );
         }
 
+        require!(release_amount > 0, ErrorCode::InvalidAmount);
+        let remaining = proposal
+            .amount
+            .checked_sub(proposal.released_so_far)
+            .ok_or(ErrorCode::PartialReleaseExceedsCap)?;
         require!(
-            ctx.accounts.vault_token_account.amount >= proposal.amount,
+            release_amount <= remaining,
+            ErrorCode::PartialReleaseExceedsCap
+        );
+
+        require!(
+            ctx.accounts.vault_token_account.amount >= release_amount,
             ErrorCode::InsufficientVaultBalance
         );
         require!(
@@ -367,15 +399,26 @@ pub mod creator_treasury {
                 },
                 signer,
             ),
-            proposal.amount,
+            release_amount,
         )?;
 
-        proposal.status = STATUS_EXECUTED;
+        let new_released = proposal
+            .released_so_far
+            .checked_add(release_amount)
+            .ok_or(ErrorCode::PartialReleaseExceedsCap)?;
+        proposal.released_so_far = new_released;
+        let fully_settled = new_released == proposal.amount;
+        if fully_settled {
+            proposal.status = STATUS_EXECUTED;
+        }
+
         emit!(Released {
             project: proposal.project,
             proposal_id,
-            amount: proposal.amount,
+            amount: release_amount,
             recipient: proposal.recipient,
+            cumulative_released: new_released,
+            fully_settled,
         });
         Ok(())
     }
@@ -394,6 +437,227 @@ pub mod creator_treasury {
         emit!(RequireArtifactToggled {
             project: ctx.accounts.project.key(),
             require,
+        });
+        Ok(())
+    }
+
+    /// Extends an older `Project` account to the current size (payer covers extra rent). Idempotent.
+    pub fn upgrade_project_layout(ctx: Context<UpgradeProjectLayout>, project_id: u64) -> Result<()> {
+        let acc = ctx.accounts.project.to_account_info();
+        let target = 8 + Project::LEN;
+        if acc.data_len() >= target {
+            return Ok(());
+        }
+        require!(
+            acc.data_len() >= 8 + PROJECT_LEGACY_BODY_LEN,
+            ErrorCode::InvalidAccountData
+        );
+        {
+            let data = acc.try_borrow_data()?;
+            let tl = Pubkey::try_from(&data[8..40]).map_err(|_| error!(ErrorCode::InvalidAccountData))?;
+            require_keys_eq!(tl, ctx.accounts.team_lead.key());
+            let pid = u64::from_le_bytes(
+                data[267..275]
+                    .try_into()
+                    .map_err(|_| error!(ErrorCode::InvalidAccountData))?,
+            );
+            require!(pid == project_id, ErrorCode::InvalidProjectIdArg);
+            let (pda_expected, bump_expected) = Pubkey::find_program_address(
+                &[b"project", tl.as_ref(), &pid.to_le_bytes()],
+                ctx.program_id,
+            );
+            require_keys_eq!(pda_expected, acc.key());
+            require_eq!(data[322], bump_expected);
+        }
+        let rent = Rent::get()?;
+        let new_minimum = rent.minimum_balance(target);
+        let lamports_extra = new_minimum.saturating_sub(acc.lamports());
+        if lamports_extra > 0 {
+            anchor_lang::system_program::transfer(
+                CpiContext::new(
+                    ctx.accounts.system_program.to_account_info(),
+                    anchor_lang::system_program::Transfer {
+                        from: ctx.accounts.payer.to_account_info(),
+                        to: acc.clone(),
+                    },
+                ),
+                lamports_extra,
+            )?;
+        }
+        acc.realloc(target, true)?;
+        Ok(())
+    }
+
+    /// Team lead configures permissionless split crank (bounded recipients + bps). Set `mode` to `AUTOMATION_MODE_NONE` to disable.
+    pub fn configure_automation(
+        ctx: Context<ConfigureAutomation>,
+        mode: u8,
+        paused: bool,
+        interval_secs: i64,
+        max_per_tick: u64,
+        next_eligible_ts: i64,
+        recipients: Vec<Pubkey>,
+        bps: Vec<u16>,
+    ) -> Result<()> {
+        let project = &mut ctx.accounts.project;
+        if mode == AUTOMATION_MODE_NONE {
+            project.automation_mode = AUTOMATION_MODE_NONE;
+            project.automation_paused = false;
+            project.automation_interval_secs = 0;
+            project.automation_next_eligible_ts = 0;
+            project.automation_max_per_tick = 0;
+            project.auto_recipient_count = 0;
+            project.auto_recipients = [Pubkey::default(); MAX_AUTO_RECIPIENTS];
+            project.auto_bps = [0u16; MAX_AUTO_RECIPIENTS];
+            emit!(AutomationConfigured {
+                project: project.key(),
+                mode: AUTOMATION_MODE_NONE,
+            });
+            return Ok(());
+        }
+        require!(
+            mode == AUTOMATION_MODE_SPLIT_CRANK,
+            ErrorCode::InvalidAutomationMode
+        );
+        require!(!recipients.is_empty(), ErrorCode::InvalidAutomationRecipients);
+        require!(
+            recipients.len() <= MAX_AUTO_RECIPIENTS,
+            ErrorCode::TooManyAutomationRecipients
+        );
+        require!(recipients.len() == bps.len(), ErrorCode::InvalidAutomationRecipients);
+        require!(interval_secs > 0, ErrorCode::InvalidAutomationInterval);
+        require!(max_per_tick > 0, ErrorCode::InvalidAutomationMaxPerTick);
+        let mut sum: u32 = 0;
+        for k in &recipients {
+            require!(*k != Pubkey::default(), ErrorCode::InvalidRecipient);
+        }
+        for b in &bps {
+            require!(*b <= 10_000, ErrorCode::InvalidAutomationBps);
+            sum = sum.checked_add(*b as u32).ok_or(ErrorCode::InvalidAutomationBps)?;
+        }
+        require!(sum > 0 && sum <= 10_000, ErrorCode::InvalidAutomationBps);
+
+        project.automation_mode = AUTOMATION_MODE_SPLIT_CRANK;
+        project.automation_paused = paused;
+        project.automation_interval_secs = interval_secs;
+        project.automation_max_per_tick = max_per_tick;
+        project.automation_next_eligible_ts = next_eligible_ts;
+        project.auto_recipient_count = recipients.len() as u8;
+        project.auto_recipients = [Pubkey::default(); MAX_AUTO_RECIPIENTS];
+        project.auto_bps = [0u16; MAX_AUTO_RECIPIENTS];
+        for (i, pk) in recipients.iter().enumerate() {
+            project.auto_recipients[i] = *pk;
+            project.auto_bps[i] = bps[i];
+        }
+        emit!(AutomationConfigured {
+            project: project.key(),
+            mode: AUTOMATION_MODE_SPLIT_CRANK,
+        });
+        Ok(())
+    }
+
+    /// Anyone may call when automation is due: moves up to `min(vault, max_per_tick)` split by configured bps.
+    pub fn crank_automation<'info>(
+        ctx: Context<'_, '_, '_, 'info, CrankAutomation<'info>>,
+    ) -> Result<()> {
+        let p = &ctx.accounts.project;
+        let project_key = p.key();
+        require!(
+            p.automation_mode == AUTOMATION_MODE_SPLIT_CRANK,
+            ErrorCode::AutomationNotActive
+        );
+        require!(!p.automation_paused, ErrorCode::AutomationPaused);
+        require!(!p.frozen, ErrorCode::VaultFrozen);
+        require!(p.vault_initialized, ErrorCode::VaultNotInitialized);
+        let now = Clock::get()?.unix_timestamp;
+        require!(
+            now >= p.automation_next_eligible_ts,
+            ErrorCode::CrankNotYetEligible
+        );
+        let count = p.auto_recipient_count as usize;
+        require!(count > 0, ErrorCode::InvalidAutomationRecipients);
+        require!(
+            ctx.remaining_accounts.len() == count,
+            ErrorCode::InvalidAutomationRecipientAccounts
+        );
+
+        let mut owners = [Pubkey::default(); MAX_AUTO_RECIPIENTS];
+        let mut bps_arr = [0u16; MAX_AUTO_RECIPIENTS];
+        for i in 0..count {
+            owners[i] = p.auto_recipients[i];
+            bps_arr[i] = p.auto_bps[i];
+        }
+        let interval = p.automation_interval_secs;
+        let max_per = p.automation_max_per_tick;
+        let mint = ctx.accounts.vault_state.mint;
+        let bump = ctx.accounts.vault_state.bump;
+        let vault_amount = ctx.accounts.vault_token_account.amount;
+        let budget = vault_amount.min(max_per);
+        require!(budget > 0, ErrorCode::InsufficientVaultBalance);
+        require!(
+            vault_amount >= budget,
+            ErrorCode::InsufficientVaultBalance
+        );
+
+        let seeds: &[&[u8]] = &[b"vault", project_key.as_ref(), &[bump]];
+        let signer = &[seeds];
+
+        for i in 0..count {
+            let rec_data = ctx.remaining_accounts[i].try_borrow_data()?;
+            let rec_state = SplTokenAccountState::unpack(&rec_data)
+                .map_err(|_| error!(ErrorCode::InvalidMint))?;
+            require_keys_eq!(rec_state.owner, owners[i]);
+            require_keys_eq!(rec_state.mint, mint);
+        }
+
+        let token_prog_ai = ctx.accounts.token_program.to_account_info();
+        let vault_from_ai = ctx.accounts.vault_token_account.to_account_info();
+        let vault_auth_ai = ctx.accounts.vault_state.to_account_info();
+        let mut recipient_ais: Vec<AccountInfo> = Vec::with_capacity(count);
+        for i in 0..count {
+            recipient_ais.push(ctx.remaining_accounts[i].clone());
+        }
+
+        let mut remainder = budget;
+        for i in 0..count {
+            let share = if i + 1 == count {
+                remainder
+            } else {
+                let s = (budget as u128)
+                    .checked_mul(bps_arr[i] as u128)
+                    .ok_or(ErrorCode::InvalidAmount)?
+                    / 10_000u128;
+                let s64 = u64::try_from(s).map_err(|_| error!(ErrorCode::InvalidAmount))?;
+                remainder = remainder
+                    .checked_sub(s64)
+                    .ok_or(ErrorCode::InvalidAmount)?;
+                s64
+            };
+            if share == 0 {
+                continue;
+            }
+            token::transfer(
+                CpiContext::new_with_signer(
+                    token_prog_ai.clone(),
+                    Transfer {
+                        from: vault_from_ai.clone(),
+                        to: recipient_ais[i].clone(),
+                        authority: vault_auth_ai.clone(),
+                    },
+                    signer,
+                ),
+                share,
+            )?;
+        }
+
+        let project_mut = &mut ctx.accounts.project;
+        project_mut.automation_next_eligible_ts = now
+            .checked_add(interval)
+            .ok_or(ErrorCode::TimelockOverflow)?;
+        emit!(AutomationCranked {
+            project: project_key,
+            budget,
+            next_eligible_ts: project_mut.automation_next_eligible_ts,
         });
         Ok(())
     }
@@ -438,6 +702,16 @@ pub struct Project {
     /// When set, `execute_release` requires a non-zero proposal artifact hash.
     pub require_artifact_for_execute: bool,
     pub bump: u8,
+    /// See `AUTOMATION_MODE_*`.
+    pub automation_mode: u8,
+    pub automation_paused: bool,
+    pub automation_interval_secs: i64,
+    pub automation_next_eligible_ts: i64,
+    /// Upper bound on tokens moved per crank (smallest units).
+    pub automation_max_per_tick: u64,
+    pub auto_recipient_count: u8,
+    pub auto_recipients: [Pubkey; MAX_AUTO_RECIPIENTS],
+    pub auto_bps: [u16; MAX_AUTO_RECIPIENTS],
 }
 
 impl Project {
@@ -454,7 +728,15 @@ impl Project {
         + 4
         + 32
         + 1
-        + 1;
+        + 1
+        + 1
+        + 1
+        + 8
+        + 8
+        + 8
+        + 1
+        + 32 * MAX_AUTO_RECIPIENTS
+        + 2 * MAX_AUTO_RECIPIENTS;
 }
 
 #[account]
@@ -490,6 +772,8 @@ pub struct ReleaseProposal {
     pub linked_milestone_id: u64,
     /// When true, `execute_release` is blocked until the lead clears it.
     pub dispute_active: bool,
+    /// Sum of token amounts already transferred for this proposal (tranches).
+    pub released_so_far: u64,
     pub bump: u8,
 }
 
@@ -510,6 +794,7 @@ impl ReleaseProposal {
         + 1
         + 8
         + 1
+        + 8
         + 1;
 }
 
@@ -718,7 +1003,7 @@ pub struct CancelProposal<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(proposal_id: u64)]
+#[instruction(proposal_id: u64, release_amount: u64)]
 pub struct ExecuteRelease<'info> {
     pub executor: Signer<'info>,
     #[account(
@@ -786,6 +1071,56 @@ pub struct SetRequireArtifact<'info> {
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
     )]
     pub project: Account<'info, Project>,
+}
+
+#[derive(Accounts)]
+#[instruction(project_id: u64)]
+pub struct UpgradeProjectLayout<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub team_lead: Signer<'info>,
+    #[account(mut)]
+    pub project: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ConfigureAutomation<'info> {
+    pub team_lead: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        bump = project.bump,
+        constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
+        constraint = project.vault_initialized @ ErrorCode::VaultNotInitialized,
+    )]
+    pub project: Account<'info, Project>,
+}
+
+#[derive(Accounts)]
+pub struct CrankAutomation<'info> {
+    pub executor: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"project", project.team_lead.as_ref(), &project.project_id.to_le_bytes()],
+        bump = project.bump,
+    )]
+    pub project: Account<'info, Project>,
+    #[account(
+        mut,
+        seeds = [b"vault", project.key().as_ref()],
+        bump = vault_state.bump,
+        constraint = vault_state.project == project.key() @ ErrorCode::InvalidVault,
+    )]
+    pub vault_state: Account<'info, VaultState>,
+    #[account(
+        mut,
+        constraint = vault_token_account.key() == anchor_spl::associated_token::get_associated_token_address(&vault_state.key(), &vault_state.mint),
+        constraint = vault_token_account.owner == vault_state.key() @ ErrorCode::InvalidVaultTokenAccount,
+        constraint = vault_token_account.mint == vault_state.mint @ ErrorCode::InvalidMint,
+    )]
+    pub vault_token_account: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[event]
@@ -869,8 +1204,12 @@ pub struct ProposalCancelled {
 pub struct Released {
     pub project: Pubkey,
     pub proposal_id: u64,
+    /// Tokens moved in this transaction.
     pub amount: u64,
     pub recipient: Pubkey,
+    /// Total released for this proposal after this transaction.
+    pub cumulative_released: u64,
+    pub fully_settled: bool,
 }
 
 #[event]
@@ -883,6 +1222,19 @@ pub struct FrozenToggled {
 pub struct RequireArtifactToggled {
     pub project: Pubkey,
     pub require: bool,
+}
+
+#[event]
+pub struct AutomationConfigured {
+    pub project: Pubkey,
+    pub mode: u8,
+}
+
+#[event]
+pub struct AutomationCranked {
+    pub project: Pubkey,
+    pub budget: u64,
+    pub next_eligible_ts: i64,
 }
 
 #[error_code]
@@ -959,4 +1311,32 @@ pub enum ErrorCode {
     DisputeActive,
     #[msg("Project requires an attached artifact before execute")]
     ArtifactRequiredForExecute,
+    #[msg("Release amount exceeds remaining approved cap for this proposal")]
+    PartialReleaseExceedsCap,
+    #[msg("Cannot cancel after funds have been released from this proposal")]
+    CannotCancelAfterPartialRelease,
+    #[msg("Project account data is invalid or too small for this operation")]
+    InvalidAccountData,
+    #[msg("Instruction project_id does not match on-chain project")]
+    InvalidProjectIdArg,
+    #[msg("Invalid automation mode")]
+    InvalidAutomationMode,
+    #[msg("Invalid automation recipients or bps")]
+    InvalidAutomationRecipients,
+    #[msg("Too many automation recipients (max 8)")]
+    TooManyAutomationRecipients,
+    #[msg("Automation interval must be positive")]
+    InvalidAutomationInterval,
+    #[msg("Automation max_per_tick must be positive when enabled")]
+    InvalidAutomationMaxPerTick,
+    #[msg("Invalid automation bps configuration")]
+    InvalidAutomationBps,
+    #[msg("Automation is not active on this project")]
+    AutomationNotActive,
+    #[msg("Automation is paused")]
+    AutomationPaused,
+    #[msg("Crank is not yet eligible (wait for next_eligible_ts)")]
+    CrankNotYetEligible,
+    #[msg("Remaining accounts must be one writable token account per automation recipient, in order")]
+    InvalidAutomationRecipientAccounts,
 }

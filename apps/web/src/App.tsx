@@ -11,18 +11,22 @@ import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import idlJson from '@idl';
 import { formatTxError } from './anchorErrors';
+import { PolicyBuilder } from './PolicyBuilder';
 import {
   canonicalPolicyJson,
   defaultPolicy,
   encodePolicyQueryParam,
   hex32,
+  isRecipientAllowedByPolicy,
+  parsePolicyJson,
+  policyDefaultTimelockSecs,
+  policyPayeePubkeys,
+  policySuggestArtifactGate,
   sha256BytesUtf8,
   simpleLineDiff,
   simulatePayout,
-  templateDemoFourWaySquad,
-  templateDemoSponsorMilestone,
   validatePolicy,
-  type TreasuryPolicyV1,
+  type TreasuryPolicy,
 } from './policy';
 import {
   type AuditPackage,
@@ -131,16 +135,26 @@ export default function App() {
 
   const [proposals, setProposals] = useState<ProposalSnapshot[]>([]);
   const [opsProposalId, setOpsProposalId] = useState('0');
+  /** Smallest units for next execute; empty = release full remainder under cap. */
+  const [execTrancheAmount, setExecTrancheAmount] = useState('');
   const [artHex, setArtHex] = useState('');
   const [artUri, setArtUri] = useState('');
   const [artLabel, setArtLabel] = useState('');
   const [artMilestone, setArtMilestone] = useState('0');
   const [csvText, setCsvText] = useState('');
+  const [showAdvancedPolicy, setShowAdvancedPolicy] = useState(false);
   const [tab, setTab] = useState<'overview' | 'setup' | 'policy' | 'ledger'>('overview');
 
   const [initName, setInitName] = useState('My treasury');
   const [initApproversText, setInitApproversText] = useState('');
   const [initThreshold, setInitThreshold] = useState('1');
+  const [autoMode, setAutoMode] = useState('1');
+  const [autoPaused, setAutoPaused] = useState(false);
+  const [autoInterval, setAutoInterval] = useState('60');
+  const [autoMaxPerTick, setAutoMaxPerTick] = useState('1000000');
+  const [autoNextTs, setAutoNextTs] = useState('');
+  const [autoRecipientsText, setAutoRecipientsText] = useState('');
+  const [autoBpsText, setAutoBpsText] = useState('5000,5000');
   const [vaultMintStr, setVaultMintStr] = useState('');
   const [depositAmount, setDepositAmount] = useState('1000000');
   const [relAmount, setRelAmount] = useState('100000');
@@ -158,6 +172,12 @@ export default function App() {
       PROGRAM_ID,
     )[0];
   }, [wallet.publicKey, projectIdStr]);
+
+  const policyPayees = useMemo(() => {
+    const r = parsePolicyJson(policyText);
+    if (!r.ok) return [] as string[];
+    return policyPayeePubkeys(r.policy);
+  }, [policyText]);
 
   const publicStatusUrl = useMemo(() => {
     if (typeof window === 'undefined' || !onChain) return '';
@@ -245,6 +265,7 @@ export default function App() {
           proposalPda: propPda.toBase58(),
           proposalId: String(i),
           amount: prop.amount.toString(),
+          releasedSoFar: prop.releasedSoFar.toString(),
           recipient: prop.recipient.toBase58(),
           timelockDurationSecs: prop.timelockDurationSecs.toString(),
           timelockEndsAt: prop.timelockEndsAt.toString(),
@@ -282,8 +303,8 @@ export default function App() {
     }
   }, [program, projectPda, wallet.publicKey, connection]);
 
-  const parsePolicy = (): TreasuryPolicyV1 => {
-    const raw = JSON.parse(policyText) as TreasuryPolicyV1;
+  const parsePolicy = (): TreasuryPolicy => {
+    const raw = JSON.parse(policyText) as TreasuryPolicy;
     return raw;
   };
 
@@ -369,28 +390,6 @@ export default function App() {
     } catch (e) {
       setErr(formatTxError(e));
     }
-  };
-
-  const onLoadTemplateFourWay = () => {
-    setErr(null);
-    setStatus(null);
-    if (!wallet.publicKey) {
-      setErr('Connect wallet to use your address as team lead in the template.');
-      return;
-    }
-    setPolicyText(JSON.stringify(templateDemoFourWaySquad(wallet.publicKey.toBase58()), null, 2));
-    setStatus('Loaded demo 4-way template — replace placeholder payees before applying on-chain.');
-  };
-
-  const onLoadTemplateSponsor = () => {
-    setErr(null);
-    setStatus(null);
-    if (!wallet.publicKey) {
-      setErr('Connect wallet to use your address as team lead in the template.');
-      return;
-    }
-    setPolicyText(JSON.stringify(templateDemoSponsorMilestone(wallet.publicKey.toBase58()), null, 2));
-    setStatus('Loaded sponsor + holdback template — replace contractor pubkey before applying on-chain.');
   };
 
   const onApplyPolicy = async () => {
@@ -696,6 +695,16 @@ export default function App() {
       setErr('Invalid recipient pubkey.');
       return;
     }
+    const parsedForGate = parsePolicyJson(policyText);
+    if (
+      parsedForGate.ok &&
+      !isRecipientAllowedByPolicy(parsedForGate.policy, relRecipient.trim())
+    ) {
+      setErr(
+        'Policy restricts payout recipients to wallets listed in splits. Pick a listed payee or turn off that toggle in Policy.',
+      );
+      return;
+    }
     let amount: BN;
     let timelock: BN;
     try {
@@ -782,6 +791,35 @@ export default function App() {
       );
       return;
     }
+    const capBn = new BN(prop.amount);
+    const releasedBn = new BN(prop.releasedSoFar);
+    const remainderBn = capBn.sub(releasedBn);
+    const rawExec = execTrancheAmount.trim();
+    let releaseBn: BN;
+    if (!rawExec) {
+      if (remainderBn.lte(new BN(0))) {
+        setErr('Nothing left to release for this proposal under the approved cap.');
+        return;
+      }
+      releaseBn = remainderBn;
+    } else {
+      let parsed: BN;
+      try {
+        parsed = new BN(rawExec, 10);
+      } catch {
+        setErr('Execute tranche amount must be a non-negative integer (smallest units).');
+        return;
+      }
+      if (parsed.lte(new BN(0))) {
+        setErr('Execute tranche amount must be greater than zero.');
+        return;
+      }
+      if (parsed.gt(remainderBn)) {
+        setErr(`Tranche exceeds remainder under cap (${remainderBn.toString()} smallest units left).`);
+        return;
+      }
+      releaseBn = parsed;
+    }
     const mint = new PublicKey(onChain.mint);
     const recipient = new PublicKey(prop.recipient);
     const recipientAta = recipientAtaForMint(recipient, mint);
@@ -794,7 +832,7 @@ export default function App() {
     setBusy(true);
     try {
       const sig = await program.methods
-        .executeRelease(new BN(pid))
+        .executeRelease(new BN(pid), releaseBn)
         .accounts({
           executor: wallet.publicKey,
           project: onChain.project,
@@ -887,6 +925,199 @@ export default function App() {
     }
   };
 
+  const AUTOMATION_MODE_NONE = 0;
+  const AUTOMATION_MODE_SPLIT = 1;
+
+  const onUpgradeProjectLayout = async () => {
+    setErr(null);
+    setStatus(null);
+    if (!program || !wallet.publicKey || !projectPda) {
+      setErr('Connect wallet and set project ID.');
+      return;
+    }
+    const pid = Number(projectIdStr);
+    if (!Number.isInteger(pid) || pid < 0) {
+      setErr('Invalid project ID.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const sig = await program.methods
+        .upgradeProjectLayout(new BN(pid))
+        .accounts({
+          payer: wallet.publicKey,
+          teamLead: wallet.publicKey,
+          project: projectPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      setStatus(`upgrade_project_layout: ${sig}`);
+      await loadOnChain();
+    } catch (e) {
+      setErr(formatTxError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onConfigureAutomation = async () => {
+    setErr(null);
+    setStatus(null);
+    if (!program || !wallet.publicKey || !onChain) {
+      setErr('Load project first.');
+      return;
+    }
+    const mode = Number(autoMode);
+    if (mode !== AUTOMATION_MODE_NONE && mode !== AUTOMATION_MODE_SPLIT) {
+      setErr('Mode must be 0 (off) or 1 (split crank).');
+      return;
+    }
+    let recipients: PublicKey[] = [];
+    let bps: number[] = [];
+    if (mode === AUTOMATION_MODE_SPLIT) {
+      const rparts = autoRecipientsText
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const bparts = autoBpsText
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => Number(s));
+      if (rparts.length === 0 || rparts.length > 8) {
+        setErr('Provide 1–8 recipient pubkeys for split crank.');
+        return;
+      }
+      if (bparts.length !== rparts.length) {
+        setErr('Recipients and bps counts must match.');
+        return;
+      }
+      try {
+        recipients = rparts.map((s) => new PublicKey(s));
+      } catch {
+        setErr('Invalid recipient pubkey.');
+        return;
+      }
+      for (const b of bparts) {
+        if (!Number.isInteger(b) || b < 0 || b > 10_000) {
+          setErr('Each bps must be an integer 0–10000.');
+          return;
+        }
+      }
+      const sum = bparts.reduce((a, b) => a + b, 0);
+      if (sum <= 0 || sum > 10_000) {
+        setErr('Sum of bps must be 1–10000.');
+        return;
+      }
+      bps = bparts;
+    }
+    const interval = Number(autoInterval);
+    const maxPer = autoMaxPerTick.trim();
+    if (mode === AUTOMATION_MODE_SPLIT) {
+      if (!Number.isInteger(interval) || interval <= 0) {
+        setErr('Interval (seconds) must be a positive integer.');
+        return;
+      }
+      if (!maxPer || BigInt(maxPer) <= 0n) {
+        setErr('Max per tick must be > 0 (smallest token units).');
+        return;
+      }
+    }
+    let nextBn: BN;
+    if (autoNextTs.trim()) {
+      try {
+        nextBn = new BN(autoNextTs.trim(), 10);
+        if (nextBn.isNeg()) throw new Error('neg');
+      } catch {
+        setErr('Next eligible must be a non-negative integer (unix seconds).');
+        return;
+      }
+    } else {
+      nextBn = new BN(Math.floor(Date.now() / 1000));
+    }
+    setBusy(true);
+    try {
+      const sig = await program.methods
+        .configureAutomation(
+          mode,
+          autoPaused,
+          new BN(mode === AUTOMATION_MODE_SPLIT ? interval : 0),
+          mode === AUTOMATION_MODE_SPLIT ? new BN(maxPer) : new BN(0),
+          nextBn,
+          recipients,
+          bps,
+        )
+        .accounts({
+          teamLead: wallet.publicKey,
+          project: onChain.project,
+        })
+        .rpc();
+      setStatus(`configure_automation: ${sig}`);
+      await loadOnChain();
+    } catch (e) {
+      setErr(formatTxError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onCrankAutomation = async () => {
+    setErr(null);
+    setStatus(null);
+    if (!program || !wallet.publicKey || !onChain?.mint) {
+      setErr('Load project with vault.');
+      return;
+    }
+    setBusy(true);
+    try {
+      // @ts-expect-error IDL account namespace
+      const proj = await program.account.project.fetch(onChain.project);
+      const countRaw = proj.autoRecipientCount ?? proj.auto_recipient_count;
+      const count =
+        countRaw && typeof countRaw === 'object' && 'toNumber' in countRaw
+          ? (countRaw as { toNumber: () => number }).toNumber()
+          : Number(countRaw ?? 0);
+      if (!count) {
+        setErr('No automation recipients on-chain; configure automation first.');
+        return;
+      }
+      const list = (proj.autoRecipients ?? proj.auto_recipients) as PublicKey[];
+      const mint = new PublicKey(onChain.mint);
+      const [vaultState] = PublicKey.findProgramAddressSync(
+        [Buffer.from('vault'), onChain.project.toBuffer()],
+        PROGRAM_ID,
+      );
+      const vaultAta = getAssociatedTokenAddressSync(mint, vaultState, true);
+      const remainingAccounts = [];
+      for (let i = 0; i < count; i++) {
+        const owner = list[i];
+        if (!owner) break;
+        remainingAccounts.push({
+          pubkey: recipientAtaForMint(owner, mint),
+          isWritable: true,
+          isSigner: false,
+        });
+      }
+      const sig = await program.methods
+        .crankAutomation()
+        .accounts({
+          executor: wallet.publicKey,
+          project: onChain.project,
+          vaultState,
+          vaultTokenAccount: vaultAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+      setStatus(`crank_automation: ${sig}`);
+      await loadOnChain();
+    } catch (e) {
+      setErr(formatTxError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onExportCsv = () => {
     setErr(null);
     if (!onChain) {
@@ -932,7 +1163,9 @@ export default function App() {
           </span>
           <div>
             <h1>Creator Treasury</h1>
-            <p className="tagline">Team vault, versioned policies, proposal artifacts, and dispute pauses — on Solana.</p>
+            <p className="tagline">
+              Team escrow vault, policy templates, multi-approver releases, artifacts, and disputes — on Solana.
+            </p>
           </div>
         </div>
         <WalletMultiButton />
@@ -1060,7 +1293,7 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                     <span className="proposal-meta">Proposal #{p.proposalId}</span>
                   </div>
                   <div className="proposal-meta">
-                    {p.amount} units → {shortAddr(p.recipient)} · policy v{p.policyVersionAtProposal}
+                    cap {p.amount} · released {p.releasedSoFar} → {shortAddr(p.recipient)} · policy v{p.policyVersionAtProposal}
                     {p.disputeActive ? ' · dispute' : ''}
                   </div>
                 </div>
@@ -1205,32 +1438,143 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
               </button>
             </div>
           </div>
+
+          <div className="panel">
+            <h2>Automation — split crank</h2>
+            <p className="muted">
+              On-chain automation moves up to <code>min(vault, max_per_tick)</code> each crank, split by bps. Anyone can
+              pay fees to <code>crank_automation</code> when <code>next_eligible_ts</code> has passed. Older projects may
+              need a one-time layout upgrade before configuring.
+            </p>
+            <div className="btn-row">
+              <button
+                type="button"
+                className="ghost"
+                disabled={busy || !program || !wallet.publicKey || !projectPda}
+                onClick={onUpgradeProjectLayout}
+              >
+                Upgrade project layout (one-time)
+              </button>
+            </div>
+            <div className="field-row" style={{ marginTop: '0.75rem' }}>
+              <div className="field" style={{ maxWidth: '8rem' }}>
+                <label htmlFor="amode">Mode</label>
+                <select id="amode" value={autoMode} onChange={(e) => setAutoMode(e.target.value)}>
+                  <option value={String(AUTOMATION_MODE_NONE)}>0 — Off</option>
+                  <option value={String(AUTOMATION_MODE_SPLIT)}>1 — Split crank</option>
+                </select>
+              </div>
+              <label className="toggle-row" style={{ marginTop: '1.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={autoPaused}
+                  onChange={(e) => setAutoPaused(e.target.checked)}
+                />
+                <span>Paused</span>
+              </label>
+            </div>
+            <div className="field-row">
+              <div className="field">
+                <label htmlFor="aint">Interval (sec)</label>
+                <input id="aint" type="text" value={autoInterval} onChange={(e) => setAutoInterval(e.target.value)} />
+              </div>
+              <div className="field">
+                <label htmlFor="amax">Max per tick (atoms)</label>
+                <input id="amax" type="text" value={autoMaxPerTick} onChange={(e) => setAutoMaxPerTick(e.target.value)} />
+              </div>
+              <div className="field">
+                <label htmlFor="anext">Next eligible (unix, blank = now)</label>
+                <input id="anext" type="text" value={autoNextTs} onChange={(e) => setAutoNextTs(e.target.value)} />
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="arec">Recipients (comma or newline)</label>
+              <textarea
+                id="arec"
+                className="compact"
+                value={autoRecipientsText}
+                onChange={(e) => setAutoRecipientsText(e.target.value)}
+                spellCheck={false}
+                placeholder="One base58 pubkey per line or comma-separated"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="abps">Bps per recipient (same order)</label>
+              <input
+                id="abps"
+                type="text"
+                value={autoBpsText}
+                onChange={(e) => setAutoBpsText(e.target.value)}
+                placeholder="5000,5000"
+              />
+            </div>
+            <div className="btn-row">
+              <button type="button" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onConfigureAutomation}>
+                Save automation on-chain
+              </button>
+              <button type="button" className="ghost" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onCrankAutomation}>
+                Crank now (connected wallet pays fee)
+              </button>
+            </div>
+          </div>
         </>
       )}
 
       {tab === 'policy' && (
         <>
-          <div className="panel">
-            <h2>Policy templates</h2>
-            <p className="muted">
-              Starters from the build plan: demo rows use well-known program IDs as stand-in payees — swap them for real
-              collaborator pubkeys before you apply on-chain.
-            </p>
-            <div className="btn-row">
-              <button type="button" className="ghost" disabled={!wallet.publicKey} onClick={onLoadTemplateFourWay}>
-                Demo 4-way split (25% each)
-              </button>
-              <button type="button" className="ghost" disabled={!wallet.publicKey} onClick={onLoadTemplateSponsor}>
-                Sponsor + 10% holdback
-              </button>
-            </div>
-          </div>
+          <PolicyBuilder
+            policyText={policyText}
+            onPolicyTextChange={setPolicyText}
+            teamLead={wallet.publicKey?.toBase58() ?? null}
+          />
+
+          {onChain &&
+            (() => {
+              const r = parsePolicyJson(policyText);
+              if (
+                !r.ok ||
+                !policySuggestArtifactGate(r.policy) ||
+                onChain.requireArtifactForExecute
+              ) {
+                return null;
+              }
+              return (
+                <div className="panel">
+                  <h2>Match policy to vault settings</h2>
+                  <p className="muted">
+                    This policy recommends requiring a deliverable hash before execute (milestone escrow). Enable it on
+                    the project to align on-chain behavior.
+                  </p>
+                  <div className="btn-row">
+                    <button
+                      type="button"
+                      className="ghost"
+                      disabled={busy || !program || !wallet.publicKey}
+                      onClick={() => onSetRequireArtifact(true)}
+                    >
+                      Enable artifact gate on-chain
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
           <div className="panel">
-            <h2>Policy JSON</h2>
-            <p className="muted">Canonical JSON is hashed in-browser; only the digest is stored on-chain via set_policy.</p>
-            <textarea value={policyText} onChange={(e) => setPolicyText(e.target.value)} spellCheck={false} />
-            <div className="btn-row">
+            <div className="field-row" style={{ alignItems: 'center', marginBottom: '0.5rem' }}>
+              <h2 style={{ margin: 0, flex: 1 }}>Advanced — raw JSON</h2>
+              <button type="button" className="ghost" onClick={() => setShowAdvancedPolicy((v) => !v)}>
+                {showAdvancedPolicy ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {showAdvancedPolicy && (
+              <>
+                <p className="muted">
+                  Canonical JSON is hashed in-browser; only the digest is stored on-chain via set_policy.
+                </p>
+                <textarea value={policyText} onChange={(e) => setPolicyText(e.target.value)} spellCheck={false} />
+              </>
+            )}
+            <div className="btn-row" style={{ marginTop: showAdvancedPolicy ? '0.75rem' : 0 }}>
               <button type="button" className="ghost" onClick={onValidate}>
                 Validate
               </button>
@@ -1304,21 +1648,56 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
             <h2>Release pipeline</h2>
             <p className="muted">
               Propose as team lead, then each approver signs <strong>Approve</strong> with the same proposal #. After
-              timelock, anyone can <strong>Execute</strong> (recipient needs an ATA for the vault mint). If{' '}
-              <strong>Artifact gate</strong> is on (Setup), attach a deliverable hash before execute. Use <strong>Cancel</strong>{' '}
-              as lead while pending or in timelock.
+              timelock, anyone can <strong>Execute</strong> one or more tranches up to the approved cap (recipient needs an
+              ATA for the vault mint). If <strong>Artifact gate</strong> is on (Setup), attach a deliverable hash before
+              execute. Use <strong>Cancel</strong> as lead while pending or in timelock — not after any tranche has moved
+              funds.
             </p>
             <div className="form-grid">
               <div className="field-row">
                 <div className="field">
-                  <label htmlFor="rel-amt">Release amount</label>
+                  <label htmlFor="rel-amt">Proposed cap (smallest units)</label>
                   <input id="rel-amt" type="text" value={relAmount} onChange={(e) => setRelAmount(e.target.value)} />
                 </div>
                 <div className="field">
                   <label htmlFor="rel-tl">Timelock (seconds)</label>
                   <input id="rel-tl" type="text" value={relTimelock} onChange={(e) => setRelTimelock(e.target.value)} />
                 </div>
+                <button
+                  type="button"
+                  className="ghost"
+                  style={{ alignSelf: 'flex-end' }}
+                  onClick={() => {
+                    setErr(null);
+                    const r = parsePolicyJson(policyText);
+                    if (!r.ok) {
+                      setErr(`Cannot read policy for default timelock: ${r.error}`);
+                      return;
+                    }
+                    setRelTimelock(String(policyDefaultTimelockSecs(r.policy)));
+                    setStatus(`Timelock set to policy default (${policyDefaultTimelockSecs(r.policy)}s).`);
+                  }}
+                >
+                  Use policy default
+                </button>
               </div>
+              {policyPayees.length > 0 && (
+                <div className="field" style={{ maxWidth: '28rem' }}>
+                  <label htmlFor="rel-pick">Payee quick pick (from policy splits)</label>
+                  <select
+                    id="rel-pick"
+                    value={policyPayees.includes(relRecipient.trim()) ? relRecipient.trim() : ''}
+                    onChange={(e) => setRelRecipient(e.target.value)}
+                  >
+                    <option value="">— Paste custom recipient below —</option>
+                    {policyPayees.map((pk) => (
+                      <option key={pk} value={pk}>
+                        {shortAddr(pk, 6, 6)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="field">
                 <label htmlFor="rel-rec">Recipient wallet</label>
                 <input
@@ -1329,6 +1708,16 @@ mint: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}`}
                   placeholder="Recipient pubkey (base58)"
                 />
               </div>
+            </div>
+            <div className="field" style={{ maxWidth: '22rem' }}>
+              <label htmlFor="exec-tranche">Execute tranche (smallest units)</label>
+              <input
+                id="exec-tranche"
+                type="text"
+                value={execTrancheAmount}
+                onChange={(e) => setExecTrancheAmount(e.target.value)}
+                placeholder="Leave blank to release full remainder"
+              />
             </div>
             <div className="btn-row">
               <button type="button" disabled={busy || !program || !wallet.publicKey || !onChain} onClick={onProposeRelease}>

@@ -1,4 +1,4 @@
-/** Maps creator-treasury Anchor error codes to short UI copy (IDL 6000–6035). */
+/** Maps creator-treasury Anchor error codes to short UI copy (IDL 6000–6037). */
 
 const BY_CODE: Record<number, string> = {
   6000: 'Too many approvers (max 5).',
@@ -37,6 +37,8 @@ const BY_CODE: Record<number, string> = {
   6033: 'No active dispute on this proposal.',
   6034: 'Cannot execute while a dispute is active.',
   6035: 'This project requires an attached artifact before execute.',
+  6036: 'Release amount exceeds the remaining approved cap for this proposal.',
+  6037: 'Cannot cancel after funds have already been released from this proposal.',
 };
 
 function tipForCode(code: number): string | undefined {
@@ -44,6 +46,8 @@ function tipForCode(code: number): string | undefined {
   if (code === 6034) return 'Resolve the dispute (team lead) before executing.';
   if (code === 6035) return 'Attach a proposal artifact (Proposals tab) with a non-zero SHA-256.';
   if (code === 6005) return 'Wait until the timelock end time, then try again.';
+  if (code === 6036) return 'Use a smaller tranche or match the remaining cap exactly.';
+  if (code === 6037) return 'Partial releases cannot be rolled back via cancel.';
   return undefined;
 }
 
@@ -66,7 +70,7 @@ export function formatTxError(e: unknown): string {
   const hexMatch = raw.match(/custom program error:\s*(0x)?([0-9a-f]+)/i);
   if (hexMatch) {
     const code = parseInt(hexMatch[2], 16);
-    if (code >= 6000 && code <= 6100) {
+    if (code >= 6000 && code <= 6040) {
       const line = BY_CODE[code];
       if (line) {
         const tip = tipForCode(code);

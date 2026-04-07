@@ -13,3 +13,6 @@ apps/web/api/idl.json
 skills/
 skills-lock.json
 *.tsbuildinfo
+keys/devnet-payer.json
+keys/crank-fee-devnet.json
+apps/web/.env.vercel.paste

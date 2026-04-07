@@ -1,4 +1,4 @@
-import type { PolicySplit, TreasuryPolicyV1 } from './policy';
+import type { PolicySplit, TreasuryPolicy } from './policy';
 
 /** Each non-empty line: `payee_pubkey_or_label,bps` (comma-separated). */
 export function splitsFromCsv(csvText: string): PolicySplit[] {
@@ -25,7 +25,7 @@ export function splitsFromCsv(csvText: string): PolicySplit[] {
   return splits;
 }
 
-export function mergeSplitsIntoPolicy(p: TreasuryPolicyV1, csvText: string): TreasuryPolicyV1 {
+export function mergeSplitsIntoPolicy(p: TreasuryPolicy, csvText: string): TreasuryPolicy {
   const splits = splitsFromCsv(csvText);
   return { ...p, splits };
 }

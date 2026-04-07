@@ -47,9 +47,17 @@ function rpcUrl(devnet) {
 }
 
 function loadKeypair() {
-  const p = process.env.KEYPAIR_PATH || path.join(os.homedir(), '.config', 'solana', 'id.json');
+  const devnetPayer = path.join(root, 'keys', 'devnet-payer.json');
+  let p = process.env.KEYPAIR_PATH;
+  if (!p && argFlag('--devnet') && fs.existsSync(devnetPayer)) {
+    p = devnetPayer;
+    console.log('Using keypair:', p);
+  }
+  if (!p) p = path.join(os.homedir(), '.config', 'solana', 'id.json');
   if (!fs.existsSync(p)) {
-    throw new Error(`Missing keypair at ${p}. Set KEYPAIR_PATH or create a wallet (solana-keygen new).`);
+    throw new Error(
+      `Missing keypair at ${p}. Set KEYPAIR_PATH, place keys/devnet-payer.json for --devnet, or use ~/.config/solana/id.json.`,
+    );
   }
   const secret = JSON.parse(fs.readFileSync(p, 'utf8'));
   return Keypair.fromSecretKey(Uint8Array.from(secret));
@@ -91,8 +99,9 @@ async function main() {
     program.programId,
   );
 
-  const existingProject = await program.account.project.fetchNullable(projectPda);
-  if (!existingProject) {
+  // Use raw account size: legacy Project accounts fail Anchor decode until upgrade_project_layout runs.
+  const projectInfo = await connection.getAccountInfo(projectPda);
+  if (!projectInfo) {
     await program.methods
       .initializeProject(projectId, Buffer.from('seed-demo', 'utf8'), [payer.publicKey], 1)
       .accounts({
@@ -107,6 +116,18 @@ async function main() {
   } else {
     console.log('Project already exists:', projectPda.toBase58());
   }
+
+  await program.methods
+    .upgradeProjectLayout(projectId)
+    .accounts({
+      payer: payer.publicKey,
+      teamLead: payer.publicKey,
+      project: projectPda,
+      systemProgram: SystemProgram.programId,
+    })
+    .signers([payer])
+    .rpc();
+  console.log('upgrade_project_layout (idempotent)');
 
   const [vaultState] = PublicKey.findProgramAddressSync(
     [Buffer.from('vault'), projectPda.toBuffer()],

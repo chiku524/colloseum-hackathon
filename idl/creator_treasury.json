@@ -143,7 +143,10 @@
         { "name": "proposal", "writable": true },
         { "name": "token_program", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" }
       ],
-      "args": [{ "name": "proposal_id", "type": "u64" }]
+      "args": [
+        { "name": "proposal_id", "type": "u64" },
+        { "name": "release_amount", "type": "u64" }
+      ]
     },
     {
       "name": "set_frozen",
@@ -162,6 +165,46 @@
         { "name": "project", "writable": true }
       ],
       "args": [{ "name": "require", "type": "bool" }]
+    },
+    {
+      "name": "upgrade_project_layout",
+      "discriminator": [42, 64, 52, 132, 240, 227, 44, 76],
+      "accounts": [
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "team_lead", "signer": true },
+        { "name": "project", "writable": true },
+        { "name": "system_program", "address": "11111111111111111111111111111111" }
+      ],
+      "args": [{ "name": "project_id", "type": "u64" }]
+    },
+    {
+      "name": "configure_automation",
+      "discriminator": [59, 207, 12, 35, 164, 110, 76, 150],
+      "accounts": [
+        { "name": "team_lead", "signer": true },
+        { "name": "project", "writable": true }
+      ],
+      "args": [
+        { "name": "mode", "type": "u8" },
+        { "name": "paused", "type": "bool" },
+        { "name": "interval_secs", "type": "i64" },
+        { "name": "max_per_tick", "type": "u64" },
+        { "name": "next_eligible_ts", "type": "i64" },
+        { "name": "recipients", "type": { "vec": "pubkey" } },
+        { "name": "bps", "type": { "vec": "u16" } }
+      ]
+    },
+    {
+      "name": "crank_automation",
+      "discriminator": [12, 104, 7, 89, 73, 47, 155, 227],
+      "accounts": [
+        { "name": "executor", "signer": true },
+        { "name": "project", "writable": true },
+        { "name": "vault_state", "writable": true },
+        { "name": "vault_token_account", "writable": true },
+        { "name": "token_program", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -215,7 +258,21 @@
     { "code": 6032, "name": "DisputeAlreadyOpen", "msg": "A dispute is already open for this proposal" },
     { "code": 6033, "name": "DisputeNotActive", "msg": "No active dispute on this proposal" },
     { "code": 6034, "name": "DisputeActive", "msg": "Cannot execute while a dispute is active" },
-    { "code": 6035, "name": "ArtifactRequiredForExecute", "msg": "Project requires an attached artifact before execute" }
+    { "code": 6035, "name": "ArtifactRequiredForExecute", "msg": "Project requires an attached artifact before execute" },
+    { "code": 6036, "name": "PartialReleaseExceedsCap", "msg": "Release amount exceeds remaining approved cap for this proposal" },
+    { "code": 6037, "name": "CannotCancelAfterPartialRelease", "msg": "Cannot cancel after funds have been released from this proposal" },
+    { "code": 6038, "name": "InvalidAccountData", "msg": "Project account data is invalid or too small for this operation" },
+    { "code": 6039, "name": "InvalidProjectIdArg", "msg": "Instruction project_id does not match on-chain project" },
+    { "code": 6040, "name": "InvalidAutomationMode", "msg": "Invalid automation mode" },
+    { "code": 6041, "name": "InvalidAutomationRecipients", "msg": "Invalid automation recipients or bps" },
+    { "code": 6042, "name": "TooManyAutomationRecipients", "msg": "Too many automation recipients (max 8)" },
+    { "code": 6043, "name": "InvalidAutomationInterval", "msg": "Automation interval must be positive" },
+    { "code": 6044, "name": "InvalidAutomationMaxPerTick", "msg": "Automation max_per_tick must be positive when enabled" },
+    { "code": 6045, "name": "InvalidAutomationBps", "msg": "Invalid automation bps configuration" },
+    { "code": 6046, "name": "AutomationNotActive", "msg": "Automation is not active on this project" },
+    { "code": 6047, "name": "AutomationPaused", "msg": "Automation is paused" },
+    { "code": 6048, "name": "CrankNotYetEligible", "msg": "Crank is not yet eligible (wait for next_eligible_ts)" },
+    { "code": 6049, "name": "InvalidAutomationRecipientAccounts", "msg": "Remaining accounts must be one writable token account per automation recipient, in order" }
   ],
   "types": [
     {
@@ -236,7 +293,15 @@
           { "name": "policy_version", "type": "u32" },
           { "name": "policy_hash", "type": { "array": ["u8", 32] } },
           { "name": "require_artifact_for_execute", "type": "bool" },
-          { "name": "bump", "type": "u8" }
+          { "name": "bump", "type": "u8" },
+          { "name": "automation_mode", "type": "u8" },
+          { "name": "automation_paused", "type": "bool" },
+          { "name": "automation_interval_secs", "type": "i64" },
+          { "name": "automation_next_eligible_ts", "type": "i64" },
+          { "name": "automation_max_per_tick", "type": "u64" },
+          { "name": "auto_recipient_count", "type": "u8" },
+          { "name": "auto_recipients", "type": { "array": ["pubkey", 8] } },
+          { "name": "auto_bps", "type": { "array": ["u16", 8] } }
         ]
       }
     },
@@ -272,6 +337,7 @@
           { "name": "artifact_label_len", "type": "u8" },
           { "name": "linked_milestone_id", "type": "u64" },
           { "name": "dispute_active", "type": "bool" },
+          { "name": "released_so_far", "type": "u64" },
           { "name": "bump", "type": "u8" }
         ]
       }
