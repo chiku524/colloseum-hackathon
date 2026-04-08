@@ -23,15 +23,18 @@ npm run dev
 
 ### Setup scripts (repo root)
 
-| Command | What it does |
-|--------|----------------|
-| `npm run setup:check` | Verifies pulled Vite env + whether a DB URL is available (does not print secrets). |
-| `npm run setup:apply-keybags` | Runs `001_solana_keybags.sql` via **Node + `pg`** (works on Windows). Uses `POSTGRES_URL*` from Vercel pull, or `SUPABASE_DB_URL` / `DATABASE_URL`, or overrides from `.env.supabase.local`. Prefer **direct** Postgres (port **5432**); poolers can fail on DDL. |
-| `npm run db:apply:keybags` | Same migration using **`psql`** + `SUPABASE_DB_URL` (bash / Mac / Linux with client tools). |
-| `npm run setup:supabase-open` | Opens the dashboard **SQL** and **Auth URL** pages for your project (needs URL in env for project ref). |
-| `npm run setup:supabase-open -- sql` | SQL editor only. |
-| `npm run setup:supabase-open -- auth` | Auth URL configuration only. |
-| `npm run setup:supabase-auth-urls` | **PATCH**es `site_url` + `uri_allow_list` via [Supabase Management API](https://supabase.com/docs/reference/api/introduction). Needs `SUPABASE_ACCESS_TOKEN` ([account tokens](https://supabase.com/dashboard/account/tokens)). Optional: `SUPABASE_SITE_URL`, `SUPABASE_URI_ALLOW_LIST` (comma-separated). |
+
+| Command                               | What it does                                                                                                                                                                                                                                                                                                |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run setup:check`                 | Verifies pulled Vite env + whether a DB URL is available (does not print secrets).                                                                                                                                                                                                                          |
+| `npm run setup:apply-keybags`         | Runs `001_solana_keybags.sql` via **Node + `pg`** (works on Windows). Uses `POSTGRES_URL*` from Vercel pull, or `SUPABASE_DB_URL` / `DATABASE_URL`, or overrides from `.env.supabase.local`. Prefer **direct** Postgres (port **5432**); poolers can fail on DDL.                                           |
+| `npm run db:apply:keybags`            | Same migration using `**psql`** + `SUPABASE_DB_URL` (bash / Mac / Linux with client tools).                                                                                                                                                                                                                 |
+| `npm run setup:supabase-open`         | Opens the dashboard **SQL** and **Auth URL** pages for your project (needs URL in env for project ref).                                                                                                                                                                                                     |
+| `npm run setup:supabase-open -- sql`  | SQL editor only.                                                                                                                                                                                                                                                                                            |
+| `npm run setup:supabase-open -- auth` | Auth URL configuration only.                                                                                                                                                                                                                                                                                |
+| `npm run setup:supabase-auth-urls`    | **PATCH**es `site_url` + `uri_allow_list` via [Supabase Management API](https://supabase.com/docs/reference/api/introduction). Needs `SUPABASE_ACCESS_TOKEN` ([account tokens](https://supabase.com/dashboard/account/tokens)). Optional: `SUPABASE_SITE_URL`, `SUPABASE_URI_ALLOW_LIST` (comma-separated). |
+| `npm run setup:supabase:auth-bash`    | Same auth URL update via **bash** — prompts for the personal access token with `read -s` (Git Bash / macOS / Linux). |
+| `npm run setup:supabase:keybags-bash` | **bash** prompts for the **Postgres password**, then runs the migration with `psql` on `db.<ref>.supabase.co:5432`. |
 
 Optional secrets file (gitignored): copy `.env.supabase.example` → `.env.supabase.local` for `SUPABASE_DB_URL` and/or `SUPABASE_ACCESS_TOKEN`.
 
@@ -39,8 +42,8 @@ If you skip automation, paste `supabase/migrations/001_solana_keybags.sql` into 
 
 ### Troubleshooting
 
-- **`self-signed certificate in certificate chain`** when running `setup:apply-keybags` — fixed in current scripts by relaxing TLS verification for `*.supabase.co` hosts. Re-run `npm run setup:apply-keybags`. If migration still fails on **port 6543** (pooler), set `SUPABASE_DB_URL` in `.env.supabase.local` to the **direct** URI (port **5432**) from Supabase → Settings → Database.
-- **`401` / `JWT could not be decoded`** for `setup:supabase-auth-urls` — you used a **project API key** (`eyJ...`). Create a **personal access token** at [Account → Access tokens](https://supabase.com/dashboard/account/tokens) and set `SUPABASE_ACCESS_TOKEN` to that value only.
+- `**self-signed certificate in certificate chain`** when running `setup:apply-keybags` — fixed in current scripts by relaxing TLS verification for `*.supabase.co` hosts. Re-run `npm run setup:apply-keybags`. If migration still fails on **port 6543** (pooler), set `SUPABASE_DB_URL` in `.env.supabase.local` to the **direct** URI (port **5432**) from Supabase → Settings → Database.
+- `**401` / `JWT could not be decoded`** for `setup:supabase-auth-urls` — you used a **project API key** (`eyJ...`). Create a **personal access token** at [Account → Access tokens](https://supabase.com/dashboard/account/tokens) and set `SUPABASE_ACCESS_TOKEN` to that value only.
 
 ## Setup
 
@@ -65,7 +68,7 @@ Row-level security on `solana_keybags` ensures each user only reads/writes their
 
 ## Local-only fallback
 
-If both URL and anon key are unset (neither `VITE_PUBLIC_`* nor `VITE_SUPABASE_*`), the Email tab uses the **device-local** vault (`embeddedWalletVault.ts`) with no verification or sync.
+If both URL and anon key are unset (neither `VITE_PUBLIC_`* nor `VITE_SUPABASE_`*), the Email tab uses the **device-local** vault (`embeddedWalletVault.ts`) with no verification or sync.
 
 ## You do not need Next.js or SvelteKit
 

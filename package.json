@@ -31,7 +31,9 @@
     "setup:check": "node scripts/check-supabase-setup.mjs",
     "setup:apply-keybags": "node scripts/apply-solana-keybags.mjs",
     "setup:supabase-open": "node scripts/open-supabase-dashboard.mjs",
-    "setup:supabase-auth-urls": "node scripts/supabase-set-auth-urls.mjs"
+    "setup:supabase-auth-urls": "node scripts/supabase-set-auth-urls.mjs",
+    "setup:supabase:auth-bash": "bash scripts/supabase-interactive.sh auth-urls",
+    "setup:supabase:keybags-bash": "bash scripts/supabase-interactive.sh apply-keybags"
   },
   "devDependencies": {
     "@coral-xyz/anchor": "0.30.1",
