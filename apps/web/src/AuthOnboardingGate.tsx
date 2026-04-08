@@ -5,6 +5,7 @@ import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { CloudEmailAuthPanel } from './CloudEmailAuthPanel';
 import { BRAND_NAME, BRAND_TAGLINE } from './brand';
 import { BrandMark } from './BrandMark';
+import { LoadingSpinner } from './LoadingSpinner';
 import { createVault, hasEmbeddedVault, readVaultRecord, unlockVault, validateNewPassword } from './embeddedWalletVault';
 import {
   dispatchOnboardingApplied,
@@ -175,18 +176,28 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
 
   return (
     <>
-      <div className="auth-gate-overlay" role="dialog" aria-modal="true" aria-label="Sign in and onboarding">
-        <div className="auth-gate-panel">
+      <div
+        className="auth-gate-overlay auth-gate-overlay--enter"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sign in and onboarding"
+      >
+        <div
+          className={`auth-gate-panel auth-gate-panel--enter${!publicKey ? ' auth-gate-panel--signin-flow' : ''}`}
+        >
           <div className="auth-gate-brand">
-            <BrandMark className="auth-gate-brand-mark" />
-            <div>
+            <BrandMark className={`auth-gate-brand-mark${!publicKey ? ' auth-intro-stagger-1' : ''}`} />
+            <div className={!publicKey ? 'auth-intro-stagger-2' : undefined}>
               <h1 className="auth-gate-title">{BRAND_NAME}</h1>
               <p className="auth-gate-tagline">{BRAND_TAGLINE}</p>
             </div>
           </div>
 
           {!publicKey ? (
-            <div className="auth-gate-section">
+            <div
+              key="signin"
+              className="auth-gate-section auth-flow-step-enter auth-flow-step-enter--delayed"
+            >
               <h2 className="auth-gate-h2">Sign in</h2>
               <p className="muted auth-gate-lead">
                 {isSupabaseConfigured()
@@ -222,7 +233,7 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
               </div>
 
               {authMode === 'wallet' ? (
-                <div className="auth-gate-wallet">
+                <div key="wallet" className="auth-gate-wallet auth-flow-step-enter">
                   <WalletMultiButton className="auth-gate-wallet-btn" />
                   <p className="muted small">
                     Phantom, Solflare, or another supported wallet. After it connects, you will set up your team treasury.
@@ -236,7 +247,7 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
                   disconnect={() => Promise.resolve(disconnect())}
                 />
               ) : (
-                <div className="auth-gate-email">
+                <div key="embedded-email" className="auth-gate-email auth-flow-step-enter">
                   {showVaultHint ? (
                     <p className="muted small auth-gate-recovery-hint">
                       This browser already has an email wallet. Sign in below, or register a new one only if you intend to
@@ -290,27 +301,41 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
                   {emailTab === 'sign-in' ? (
                     <button
                       type="button"
-                      className="auth-gate-submit"
+                      className={`auth-gate-submit${authBusy ? ' auth-gate-submit--with-spinner' : ''}`}
                       disabled={authBusy}
                       onClick={() => void onUnlockEmbedded()}
                     >
-                      {authBusy ? 'Unlocking…' : 'Unlock email wallet'}
+                      {authBusy ? (
+                        <>
+                          <LoadingSpinner size="sm" label="Unlocking wallet" />
+                          <span>Unlocking…</span>
+                        </>
+                      ) : (
+                        'Unlock email wallet'
+                      )}
                     </button>
                   ) : (
                     <button
                       type="button"
-                      className="auth-gate-submit"
+                      className={`auth-gate-submit${authBusy ? ' auth-gate-submit--with-spinner' : ''}`}
                       disabled={authBusy}
                       onClick={() => void onRegisterEmbedded()}
                     >
-                      {authBusy ? 'Creating…' : 'Create email wallet & continue'}
+                      {authBusy ? (
+                        <>
+                          <LoadingSpinner size="sm" label="Creating wallet" />
+                          <span>Creating…</span>
+                        </>
+                      ) : (
+                        'Create email wallet & continue'
+                      )}
                     </button>
                   )}
                 </div>
               )}
             </div>
           ) : (
-            <div className="auth-gate-section">
+            <div key="onboard" className="auth-gate-section auth-flow-step-enter">
               <h2 className="auth-gate-h2">Create your team / project</h2>
               <p className="muted auth-gate-lead">
                 Your connected address is the <strong>team lead</strong> on-chain. You can add co-approvers now or later in

@@ -2105,8 +2105,12 @@ a:focus-visible {
   inset: 0;
   z-index: 2000;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  min-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.5rem;
   background: color-mix(in srgb, var(--stone-deep) 88%, black);
   backdrop-filter: blur(8px);
@@ -2114,13 +2118,27 @@ a:focus-visible {
 
 .auth-gate-panel {
   width: min(440px, 100%);
+  flex-shrink: 0;
   max-height: min(90vh, 720px);
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: 1.75rem 1.5rem;
+  margin-block: auto;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+.auth-gate-panel::-webkit-scrollbar {
+  display: none;
+}
+
+/* Sign in / register: single card height — no inner scroll bar; tall steps scroll the overlay */
+.auth-gate-panel--signin-flow {
+  max-height: none;
+  overflow: visible;
 }
 
 .auth-gate-brand {
@@ -2321,6 +2339,138 @@ a:focus-visible {
   overflow: hidden;
   pointer-events: none;
   visibility: hidden;
+}
+
+/* Auth gate motion + loading */
+@keyframes auth-overlay-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes auth-panel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auth-gate-overlay--enter {
+  animation: auth-overlay-fade 0.42s ease-out both;
+}
+
+.auth-gate-panel--enter {
+  animation: auth-panel-rise 0.52s cubic-bezier(0.22, 1, 0.36, 1) 0.04s both;
+}
+
+.auth-intro-stagger-1 {
+  animation: auth-step-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+}
+
+.auth-intro-stagger-2 {
+  animation: auth-step-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both;
+}
+
+.auth-flow-step-enter {
+  animation: auth-step-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-flow-step-enter--delayed {
+  animation-delay: 0.16s;
+}
+
+.sh-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sh-spinner--sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.sh-spinner--md {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.sh-spinner--lg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.sh-spinner-ring {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: sh-spin 0.7s linear infinite;
+}
+
+.auth-gate-submit--with-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.auth-loading-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem 0.5rem;
+  min-height: 6rem;
+}
+
+.auth-loading-block .sh-spinner--lg {
+  opacity: 0.95;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-gate-overlay--enter,
+  .auth-gate-panel--enter,
+  .auth-intro-stagger-1,
+  .auth-intro-stagger-2,
+  .auth-flow-step-enter,
+  .auth-flow-step-enter--delayed {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .sh-spinner-ring {
+    animation: sh-spin 1.4s linear infinite;
+  }
 }
 
 .small {
