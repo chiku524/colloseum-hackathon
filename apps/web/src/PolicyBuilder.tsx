@@ -11,6 +11,16 @@ import {
   toPolicyV2ForEdit,
   type TreasuryPolicyV2,
 } from './policy';
+import {
+  SectionHeader,
+  UxIconAutomation,
+  UxIconClock,
+  UxIconPolicy,
+  UxIconProposals,
+  UxIconSliders,
+  UxIconToolbox,
+  UxIconVault,
+} from './UxVisual';
 
 export type PolicyBuilderProps = {
   policyText: string;
@@ -99,7 +109,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
   if (!model) {
     return (
       <div className="panel policy-builder">
-        <h2>Policy builder</h2>
+        <SectionHeader icon={<UxIconPolicy />} title="Policy builder" />
         {parseErr ? (
           <p className="error" role="alert">
             Fix the raw rules under Policy → Advanced, then come back: {parseErr}
@@ -115,7 +125,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
 
   return (
     <div className="panel policy-builder">
-      <h2>Payout rules</h2>
+      <SectionHeader icon={<UxIconPolicy />} title="Payout rules" />
       <p className="muted">
         Pick a template or edit splits below. This drives the “what if” calculator and optional checks before you sign a
         payout. Saving on-chain still uses your approvers, wait times, and payment flow — this page is how you document who
@@ -128,7 +138,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         </p>
       )}
 
-      <h3 className="policy-builder__h3">Templates</h3>
+      <SectionHeader icon={<UxIconToolbox />} title="Templates" level="sub" />
       <div className="policy-template-grid">
         <button
           type="button"
@@ -232,7 +242,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         </div>
       </div>
 
-      <h3 className="policy-builder__h3">Workflow toggles</h3>
+      <SectionHeader icon={<UxIconSliders />} title="Workflow toggles" level="sub" />
       <div className="toggle-list">
         <label className="toggle-row">
           <input
@@ -270,7 +280,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         />
       </div>
 
-      <h3 className="policy-builder__h3">Timelock default</h3>
+      <SectionHeader icon={<UxIconClock />} title="Timelock default" level="sub" />
       <p className="muted small">Used when you tap “Use rules default” on the Proposals tab.</p>
       <div className="field-row">
         <div className="field" style={{ maxWidth: '14rem' }}>
@@ -304,7 +314,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         </div>
       </div>
 
-      <h3 className="policy-builder__h3">Holdback</h3>
+      <SectionHeader icon={<UxIconVault />} title="Holdback" level="sub" />
       <div className="field" style={{ maxWidth: '12rem' }}>
         <label htmlFor="pb-hold">Hold back (points out of 10,000 — 100 = 1%)</label>
         <input
@@ -317,7 +327,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         />
       </div>
 
-      <h3 className="policy-builder__h3">Automation notes (informational)</h3>
+      <SectionHeader icon={<UxIconAutomation />} title="Automation notes (informational)" level="sub" />
       <p className="muted small">
         The blockchain cannot run a clock by itself. Use this field to leave notes for your team about future auto-payout
         ideas — it does not turn anything on by itself.
@@ -360,7 +370,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         </div>
       )}
 
-      <h3 className="policy-builder__h3">Who gets what (split list)</h3>
+      <SectionHeader icon={<UxIconProposals />} title="Who gets what (split list)" level="sub" />
       <p className="muted small">
         Each row is a wallet and its share in points (out of 10,000). All rows plus holdback must stay at or under
         10,000 points.
@@ -394,7 +404,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
         Add wallet row
       </button>
 
-      <h3 className="policy-builder__h3">Documentation</h3>
+      <SectionHeader icon={<UxIconPolicy />} title="Documentation" level="sub" />
       <div className="field">
         <label htmlFor="pb-doc">Plain-language summary (optional)</label>
         <textarea

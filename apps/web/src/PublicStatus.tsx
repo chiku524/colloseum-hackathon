@@ -8,6 +8,7 @@ import { BRAND_NAME } from './brand';
 import { BrandMark } from './BrandMark';
 import { SharedViewBanner } from './SharedViewBanner';
 import { hex32 } from './policy';
+import { SectionHeader, UxIconCode, UxIconOverview, UxIconProposals } from './UxVisual';
 import {
   WIDGET_BRIDGE_PROTOCOL,
   WIDGET_BRIDGE_SOURCE,
@@ -443,7 +444,7 @@ export function PublicStatus() {
           </header>
 
           <div className={displayParams.embed ? 'panel app-shell__embed-hide' : 'panel'}>
-            <h2>Link parameters (for builders)</h2>
+            <SectionHeader icon={<UxIconCode />} title="Link parameters (for builders)" />
             <p className="muted">
               Point people here with <code>team_lead</code> (team lead wallet) and <code>project_id</code> (number). Optional:{' '}
               <code>rpc</code> for a custom Solana URL, or <code>token</code> from <code>POST /api/v1/embed-token</code> instead
@@ -476,7 +477,7 @@ network: ${defaultRpc}`}
           {state.kind === 'ok' && (
             <>
               <div className="panel">
-                <h2>Project details</h2>
+                <SectionHeader icon={<UxIconOverview />} title="Project details" />
                 <pre className="compact-block">
                   {`On-chain address: ${state.projectPda}
 Team lead wallet: ${shortAddr(state.teamLead, 8, 8)}
@@ -494,10 +495,10 @@ Data from: ${state.rpcUsed ?? 'browser'}`}
 
               {state.proposals.length > 0 && (
                 <div className="panel">
-                  <h2>Payout requests</h2>
+                  <SectionHeader icon={<UxIconProposals />} title="Payout requests" />
                   <div className="proposal-list" aria-label="Payout requests">
                     {state.proposals.map((p) => (
-                      <div key={p.proposalId} className="proposal-card">
+                      <div key={p.proposalId} className={`proposal-card proposal-card--st-${p.statusCode}`}>
                         <div className="proposal-card-top">
                           <span className={badgeClassForStatus(p.statusCode)}>{p.status}</span>
                           <span className="proposal-meta">Request #{p.proposalId}</span>

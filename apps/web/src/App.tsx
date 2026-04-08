@@ -43,6 +43,25 @@ import { CLUSTER_LABELS } from './solanaCluster';
 import { useClusterTransactionGuard } from './useClusterTransactionGuard';
 import { ToastStack, useToast } from './ToastStack';
 import { UxAccordion } from './UxAccordion';
+import {
+  SectionHeader,
+  UxIconAlert,
+  UxIconAutomation,
+  UxIconCode,
+  UxIconDownload,
+  UxIconLink,
+  UxIconOverview,
+  UxIconPath,
+  UxIconPause,
+  UxIconPolicy,
+  UxIconProof,
+  UxIconProposals,
+  UxIconShare,
+  UxIconSetup,
+  UxIconToolbox,
+  UxIconTreasury,
+  UxIconVault,
+} from './UxVisual';
 
 const PolicyBuilder = lazy(() => import('./PolicyBuilder').then((m) => ({ default: m.PolicyBuilder })));
 const TreasuryAnalytics = lazy(() => import('./TreasuryAnalytics').then((m) => ({ default: m.TreasuryAnalytics })));
@@ -1293,12 +1312,17 @@ export default function App() {
 
       {!wallet.publicKey ? (
         <div className="start-here-strip" role="region" aria-label="Getting started">
-          <strong>Start here</strong>
-          <ol className="start-here-strip__steps">
-            <li>Connect your Solana wallet above.</li>
-            <li>Enter your project number (same as when you created the team).</li>
-            <li>Open Overview and tap Refresh data to load balances and payout requests.</li>
-          </ol>
+          <div className="start-here-strip__art" aria-hidden>
+            <UxIconPath />
+          </div>
+          <div className="start-here-strip__content">
+            <strong className="start-here-strip__head">Start here</strong>
+            <ol className="start-here-strip__steps">
+              <li>Connect your Solana wallet above.</li>
+              <li>Enter your project number (same as when you created the team).</li>
+              <li>Open Overview and tap Refresh data to load balances and payout requests.</li>
+            </ol>
+          </div>
         </div>
       ) : null}
 
@@ -1310,21 +1334,28 @@ export default function App() {
           }`}
           role={clusterGenesisError || clusterMismatch ? 'alert' : 'status'}
         >
-          {clusterGenesisError ? (
-            <p className="cluster-alignment-banner__text">{clusterGenesisError}</p>
-          ) : clusterMismatch ? (
-            <p className="cluster-alignment-banner__text">
-              <strong>Network mismatch:</strong> This app is on <strong>{rpcClusterLabel}</strong> (from your RPC), but your
-              wallet reported <strong>{walletCluster ? CLUSTER_LABELS[walletCluster] : '—'}</strong>. Signing may fail —
-              switch your wallet to the same network or change <code>VITE_RPC_URL</code>.
-            </p>
-          ) : (
-            <p className="cluster-alignment-banner__text">
-              <strong>Wallet network unknown.</strong> This app uses <strong>{rpcClusterLabel}</strong>. Confirm your wallet
-              extension is set to that network before signing; you will be asked once per browser session if we still cannot
-              detect it.
-            </p>
-          )}
+          <div className="cluster-alignment-banner__inner">
+            <div className="cluster-alignment-banner__icon" aria-hidden>
+              {clusterGenesisError || clusterMismatch ? <UxIconAlert /> : <UxIconPath />}
+            </div>
+            <div className="cluster-alignment-banner__body">
+              {clusterGenesisError ? (
+                <p className="cluster-alignment-banner__text">{clusterGenesisError}</p>
+              ) : clusterMismatch ? (
+                <p className="cluster-alignment-banner__text">
+                  <strong>Network mismatch:</strong> This app is on <strong>{rpcClusterLabel}</strong> (from your RPC), but
+                  your wallet reported <strong>{walletCluster ? CLUSTER_LABELS[walletCluster] : '—'}</strong>. Signing may
+                  fail — switch your wallet to the same network or change <code>VITE_RPC_URL</code>.
+                </p>
+              ) : (
+                <p className="cluster-alignment-banner__text">
+                  <strong>Wallet network unknown.</strong> This app uses <strong>{rpcClusterLabel}</strong>. Confirm your
+                  wallet extension is set to that network before signing; you will be asked once per browser session if we
+                  still cannot detect it.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -1350,7 +1381,10 @@ export default function App() {
 
       <nav className="tabs tabs--scroll" role="tablist" aria-label="Main sections">
         <button type="button" role="tab" aria-selected={tab === 'overview'} onClick={() => setTab('overview')}>
-          Overview
+          <span className="tab-btn__glyph" aria-hidden>
+            <UxIconOverview />
+          </span>
+          <span className="tab-btn__label">Overview</span>
         </button>
         <button
           type="button"
@@ -1361,18 +1395,29 @@ export default function App() {
             !projectLoaded && wallet.publicKey ? 'Treasury — load project on Overview first' : 'Treasury'
           }
         >
-          Treasury
-          {!projectLoaded && wallet.publicKey ? (
-            <span className="tab-needs-load" title="Load project on Overview first" aria-hidden>
-              ●
-            </span>
-          ) : null}
+          <span className="tab-btn__glyph" aria-hidden>
+            <UxIconTreasury />
+          </span>
+          <span className="tab-btn__label">
+            Treasury
+            {!projectLoaded && wallet.publicKey ? (
+              <span className="tab-needs-load" title="Load project on Overview first" aria-hidden>
+                ●
+              </span>
+            ) : null}
+          </span>
         </button>
         <button type="button" role="tab" aria-selected={tab === 'setup'} onClick={() => setTab('setup')}>
-          Setup
+          <span className="tab-btn__glyph" aria-hidden>
+            <UxIconSetup />
+          </span>
+          <span className="tab-btn__label">Setup</span>
         </button>
         <button type="button" role="tab" aria-selected={tab === 'policy'} onClick={() => setTab('policy')}>
-          Policy
+          <span className="tab-btn__glyph" aria-hidden>
+            <UxIconPolicy />
+          </span>
+          <span className="tab-btn__label">Policy</span>
         </button>
         <button
           type="button"
@@ -1381,12 +1426,17 @@ export default function App() {
           onClick={() => setTab('ledger')}
           aria-label={!projectLoaded && wallet.publicKey ? 'Proposals — load project on Overview first' : 'Proposals'}
         >
-          Proposals
-          {!projectLoaded && wallet.publicKey ? (
-            <span className="tab-needs-load" title="Load project on Overview first" aria-hidden>
-              ●
-            </span>
-          ) : null}
+          <span className="tab-btn__glyph" aria-hidden>
+            <UxIconProposals />
+          </span>
+          <span className="tab-btn__label">
+            Proposals
+            {!projectLoaded && wallet.publicKey ? (
+              <span className="tab-needs-load" title="Load project on Overview first" aria-hidden>
+                ●
+              </span>
+            ) : null}
+          </span>
         </button>
         <button
           type="button"
@@ -1395,18 +1445,23 @@ export default function App() {
           onClick={() => setTab('widgets')}
           aria-label={!projectLoaded && wallet.publicKey ? 'Share — load project on Overview first' : 'Share'}
         >
-          Share
-          {!projectLoaded && wallet.publicKey ? (
-            <span className="tab-needs-load" title="Load project on Overview first" aria-hidden>
-              ●
-            </span>
-          ) : null}
+          <span className="tab-btn__glyph" aria-hidden>
+            <UxIconShare />
+          </span>
+          <span className="tab-btn__label">
+            Share
+            {!projectLoaded && wallet.publicKey ? (
+              <span className="tab-needs-load" title="Load project on Overview first" aria-hidden>
+                ●
+              </span>
+            ) : null}
+          </span>
         </button>
       </nav>
 
       {tab === 'overview' && (
         <div className="panel">
-          <h2>Your project</h2>
+          <SectionHeader icon={<UxIconOverview />} title="Your project" />
           <p className="muted">
             Enter the <strong>project number</strong> you chose when you created the team. Your connected wallet must be
             the team lead. Then load the latest info from Solana.
@@ -1431,6 +1486,17 @@ export default function App() {
             Must match the number you used under Setup. Amounts elsewhere are in the token’s smallest units (see field
             hints).
           </p>
+          {wallet.publicKey && !busy && !onChain ? (
+            <div className="ux-empty-hint" role="status">
+              <div className="ux-empty-hint__art" aria-hidden>
+                <UxIconVault />
+              </div>
+              <p>
+                Tap <strong>Refresh data</strong> to load your vault balance, rules version, and payout requests from
+                Solana.
+              </p>
+            </div>
+          ) : null}
           {busy && !onChain ? (
             <div className="ux-overview-skeleton" aria-busy="true" aria-label="Loading project data">
               <div className="ux-sk-grid">
@@ -1449,27 +1515,27 @@ export default function App() {
           {onChain && (
             <>
               <div className="stat-grid">
-                <div className="stat">
+                <div className="stat" data-accent="sky">
                   <div className="stat-label">Rules version</div>
                   <div className="stat-value">{onChain.policyVersion}</div>
                 </div>
-                <div className="stat">
+                <div className="stat" data-accent="mint">
                   <div className="stat-label">Next payout #</div>
                   <div className="stat-value">{onChain.nextProposalId}</div>
                 </div>
-                <div className="stat">
+                <div className="stat" data-accent="amber">
                   <div className="stat-label">Vault ready</div>
                   <div className="stat-value">{onChain.vaultInitialized ? 'Yes' : 'Not yet'}</div>
                 </div>
-                <div className="stat">
+                <div className="stat" data-accent="sky">
                   <div className="stat-label">Vault balance</div>
                   <div className="stat-value">{onChain.vaultBalance ?? '—'}</div>
                 </div>
-                <div className="stat">
+                <div className="stat" data-accent="rose">
                   <div className="stat-label">Payouts paused</div>
                   <div className="stat-value">{onChain.frozen ? 'Yes' : 'No'}</div>
                 </div>
-                <div className="stat">
+                <div className="stat" data-accent="mint">
                   <div className="stat-label">Proof before pay</div>
                   <div className="stat-value">{onChain.requireArtifactForExecute ? 'Required' : 'Off'}</div>
                 </div>
@@ -1526,7 +1592,7 @@ Token full address: ${onChain.mint ?? '—'}`}
           {proposals.length > 0 && (
             <div className="proposal-list" aria-label="Payout requests">
               {proposals.map((p) => (
-                <div key={p.proposalId} className="proposal-card">
+                <div key={p.proposalId} className={`proposal-card proposal-card--st-${p.statusCode}`}>
                   <div className="proposal-card-top">
                     <span className={badgeClassForStatus(p.statusCode)}>{p.status}</span>
                     <span className="proposal-meta">Proposal #{p.proposalId}</span>
@@ -1544,7 +1610,7 @@ Token full address: ${onChain.mint ?? '—'}`}
 
       {tab === 'treasury' && (
         <div className="panel">
-          <h2>Treasury snapshot</h2>
+          <SectionHeader icon={<UxIconTreasury />} title="Treasury snapshot" />
           <p className="muted">
             See how much sits in the vault, how much is promised but not yet paid, and how much has already gone out on
             approved payout requests. Choose who can see these charts in <em>this</em> browser.
@@ -1610,7 +1676,7 @@ Token full address: ${onChain.mint ?? '—'}`}
       {tab === 'setup' && (
         <>
           <div className="panel">
-            <h2>Create your team project</h2>
+            <SectionHeader icon={<UxIconSetup />} title="Create your team project" />
             <p className="muted">
               Use the same <strong>project number</strong> as on Overview. List everyone who can approve payouts —{' '}
               <strong>your wallet must be first</strong>. One Solana wallet address per line (or separate with commas).
@@ -1657,7 +1723,7 @@ Token full address: ${onChain.mint ?? '—'}`}
           </div>
 
           <div className="panel">
-            <h2>Vault & deposits</h2>
+            <SectionHeader icon={<UxIconVault />} title="Vault & deposits" />
             <p className="muted">
               Pick <strong>which token</strong> the vault should hold (paste its <strong>mint address</strong> — the same
               long address your wallet uses for that coin, e.g. devnet USDC). You only turn the vault on once. Deposits
@@ -1704,7 +1770,7 @@ Token full address: ${onChain.mint ?? '—'}`}
           </div>
 
           <div className="panel">
-            <h2>Emergency pause</h2>
+            <SectionHeader icon={<UxIconPause />} title="Emergency pause" />
             <p className="muted">
               While paused, <strong>new payout requests and payments stop</strong>. Deposits can still arrive. Team lead
               only.
@@ -1730,7 +1796,7 @@ Token full address: ${onChain.mint ?? '—'}`}
           </div>
 
           <div className="panel">
-            <h2>Proof before paying</h2>
+            <SectionHeader icon={<UxIconProof />} title="Proof before paying" />
             <p className="muted">
               When this is on, the team must attach a <strong>delivery proof</strong> (a file fingerprint) to a payout
               request before money can be sent. Good for milestones. Team lead only.
@@ -1756,7 +1822,7 @@ Token full address: ${onChain.mint ?? '—'}`}
           </div>
 
           <div className="panel">
-            <h2>Automatic split payouts (advanced)</h2>
+            <SectionHeader icon={<UxIconAutomation />} title="Automatic split payouts (advanced)" />
             <p className="muted">
               Periodically move a capped amount from the vault and split it across wallets by share. Anyone can trigger a
               run after the wait time; your wallet pays the small Solana network fee. Older projects may need the one-time
@@ -1860,7 +1926,7 @@ Token full address: ${onChain.mint ?? '—'}`}
               }
               return (
                 <div className="panel">
-                  <h2>Match rules to vault settings</h2>
+                  <SectionHeader icon={<UxIconLink />} title="Match rules to vault settings" />
                   <p className="muted">
                     These rules suggest requiring a delivery proof before paying (typical for milestones). Turn that on
                     under Setup so the chain matches.
@@ -1880,8 +1946,12 @@ Token full address: ${onChain.mint ?? '—'}`}
             })()}
 
           <div className="panel">
-            <div className="field-row" style={{ alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h2 style={{ margin: 0, flex: 1 }}>Advanced — raw rules file</h2>
+            <div className="policy-advanced-head">
+              <SectionHeader
+                icon={<UxIconCode />}
+                title="Advanced — raw rules file"
+                className="section-header--inline"
+              />
               <button type="button" className="ghost" onClick={() => setShowAdvancedPolicy((v) => !v)}>
                 {showAdvancedPolicy ? 'Hide' : 'Show'}
               </button>
@@ -1909,13 +1979,13 @@ Token full address: ${onChain.mint ?? '—'}`}
           </div>
 
           <div className="panel">
-            <h2>More policy tools</h2>
+            <SectionHeader icon={<UxIconToolbox />} title="More policy tools" />
             <p className="muted">
               Shareable calculator, spreadsheet import, and diff — tucked away until you need them.
             </p>
             <UxAccordion title="Open calculator, import & compare" storageKey="ct-ux-policy-extra">
               <div className="policy-tools-section">
-                <h3 className="policy-tools-section__title">“What if” calculator (shareable link)</h3>
+                <SectionHeader icon={<UxIconShare />} title="“What if” calculator (shareable link)" level="sub" />
                 <p className="muted">
                   Send finance a read-only link to try deposit math — no wallet. The rules are tucked inside the link, so
                   keep the team small if the link gets long.
@@ -1944,7 +2014,7 @@ Token full address: ${onChain.mint ?? '—'}`}
               </div>
 
               <div className="policy-tools-section">
-                <h3 className="policy-tools-section__title">Import splits from a spreadsheet</h3>
+                <SectionHeader icon={<UxIconProposals />} title="Import splits from a spreadsheet" level="sub" />
                 <p className="muted">
                   Each row: <code>wallet_address,share_points</code> (share is points out of 10,000). Lines starting with{' '}
                   <code>#</code> are notes. This merges into the rules you are editing above.
@@ -1966,7 +2036,7 @@ Token full address: ${onChain.mint ?? '—'}`}
               </div>
 
               <div className="policy-tools-section">
-                <h3 className="policy-tools-section__title">Compare to an older version</h3>
+                <SectionHeader icon={<UxIconCode />} title="Compare to an older version" level="sub" />
                 <p className="muted">
                   Paste an older rules file, or save your current draft as the baseline, then see line-by-line changes.
                 </p>
@@ -1993,7 +2063,7 @@ Token full address: ${onChain.mint ?? '—'}`}
       {tab === 'ledger' && (
         <>
           <div className="panel">
-            <h2>Payout requests</h2>
+            <SectionHeader icon={<UxIconProposals />} title="Payout requests" />
             <p className="muted">
               <strong>1.</strong> Team lead starts a request with a max amount, wait time, and who gets paid.{' '}
               <strong>2.</strong> Enough approvers tap <strong>Approve</strong> (same request number).{' '}
@@ -2095,7 +2165,7 @@ Token full address: ${onChain.mint ?? '—'}`}
           </div>
 
           <div className="panel">
-            <h2>Proof & disputes</h2>
+            <SectionHeader icon={<UxIconProof />} title="Proof & disputes" />
             <p className="muted">
               Use the <strong>same payout request number</strong> for each step. Open a dispute: team lead or any approver.
               Close it: lead only. While a dispute is open, payments on that request are blocked.
@@ -2142,7 +2212,7 @@ Token full address: ${onChain.mint ?? '—'}`}
           </div>
 
           <div className="panel">
-            <h2>Download records</h2>
+            <SectionHeader icon={<UxIconDownload />} title="Download records" />
             <p className="muted">
               Export everything you see for this project (refresh Overview first so numbers are current).
             </p>

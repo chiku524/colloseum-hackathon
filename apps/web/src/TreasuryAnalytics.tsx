@@ -6,6 +6,7 @@ import {
   fractionPercent,
   type TreasuryFlowMetrics,
 } from './treasuryMetrics';
+import { SectionHeader, UxIconProposals, UxIconTreasury } from './UxVisual';
 
 const COL_VAULT = '#3d8bd4';
 const COL_OUTSTANDING = '#c9a227';
@@ -144,6 +145,7 @@ export function TreasuryAnalytics({ proposals, vaultInitialized, vaultAmountRaw,
 
   return (
     <div className="treasury-analytics">
+      <SectionHeader icon={<UxIconTreasury />} title="Flow & breakdown" />
       <p className="muted treasury-analytics__intro">
         Numbers come from your vault’s token balance and approved payout requests. If you use <strong>automatic split</strong>{' '}
         payouts in Setup, some tokens may move without changing these request totals — <strong>in vault now</strong> always
@@ -155,7 +157,7 @@ export function TreasuryAnalytics({ proposals, vaultInitialized, vaultAmountRaw,
       ) : (
         <>
           <div className="treasury-kpi-grid">
-            <div className="treasury-kpi">
+            <div className="treasury-kpi" data-accent="sky">
               <div className="treasury-kpi__label">In vault now</div>
               <div className="treasury-kpi__value">{formatTokenAtoms(inVault, vaultDecimals)}</div>
               {mint && (
@@ -164,17 +166,17 @@ export function TreasuryAnalytics({ proposals, vaultInitialized, vaultAmountRaw,
                 </div>
               )}
             </div>
-            <div className="treasury-kpi">
+            <div className="treasury-kpi" data-accent="amber">
               <div className="treasury-kpi__label">Promised, not paid yet</div>
               <div className="treasury-kpi__value">{formatTokenAtoms(outstandingCommitted, vaultDecimals)}</div>
               <div className="treasury-kpi__meta">Approved limits minus what already went out (ignores cancelled)</div>
             </div>
-            <div className="treasury-kpi">
+            <div className="treasury-kpi" data-accent="violet">
               <div className="treasury-kpi__label">Paid out on requests</div>
               <div className="treasury-kpi__value">{formatTokenAtoms(disbursedViaProposals, vaultDecimals)}</div>
               <div className="treasury-kpi__meta">Total sent after approvals</div>
             </div>
-            <div className="treasury-kpi treasury-kpi--total">
+            <div className="treasury-kpi treasury-kpi--total" data-accent="mint">
               <div className="treasury-kpi__label">All tracked funds</div>
               <div className="treasury-kpi__value">{formatTokenAtoms(totalAttributable, vaultDecimals)}</div>
               <div className="treasury-kpi__meta">Vault + promised + paid (see note above about automation)</div>
@@ -190,7 +192,7 @@ export function TreasuryAnalytics({ proposals, vaultInitialized, vaultAmountRaw,
 
       {proposals.length > 0 && (
         <div className="treasury-table-wrap">
-          <h3 className="treasury-subhead">By payout request status</h3>
+          <SectionHeader icon={<UxIconProposals />} title="By payout request status" level="sub" />
           <table className="treasury-table">
             <thead>
               <tr>

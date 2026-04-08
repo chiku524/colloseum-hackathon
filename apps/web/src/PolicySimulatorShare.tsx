@@ -9,6 +9,7 @@ import {
   validatePolicy,
   type TreasuryPolicy,
 } from './policy';
+import { SectionHeader, UxIconPolicy } from './UxVisual';
 
 function readPolicyFromUrl(): { policy: TreasuryPolicy | null; error: string | null } {
   const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -76,7 +77,7 @@ export function PolicySimulatorShare() {
 
       {policy && (
         <div className="panel">
-          <h2>Rules from the link</h2>
+          <SectionHeader icon={<UxIconPolicy />} title="Rules from the link" />
           <pre className="data-block">{JSON.stringify(policy, null, 2)}</pre>
           <div className="field-row" style={{ marginTop: '0.75rem' }}>
             <div className="field">

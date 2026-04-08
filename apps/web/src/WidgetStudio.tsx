@@ -16,6 +16,7 @@ import {
 import { encodePolicyQueryParam, parsePolicyJson } from './policy';
 import { WIDGET_BRIDGE_PROTOCOL, parentMessageListenerSnippet } from './widgetBridge';
 import { WIDGET_MANIFEST_PATH, fetchWidgetManifest, type WidgetManifest } from './widgetManifest';
+import { SectionHeader, UxIconLink, UxIconMonitor, UxIconPolicy, UxIconShare } from './UxVisual';
 
 export type WidgetStudioProjectDefaults = {
   teamLead: string;
@@ -220,14 +221,14 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
 
   return (
     <div className="panel widget-studio">
-      <h2>Share & embed</h2>
+      <SectionHeader icon={<UxIconShare />} title="Share & embed" />
       <p className="muted">
         Copy ready-made links or code snippets for your own website or tools. For private dashboards, your backend can mint a
         short-lived token with <code>POST /api/v1/embed-token</code> — paste it below so links never expose wallet addresses.
       </p>
 
       <div className="widget-studio__manifest">
-        <h3 className="widget-studio__manifest-title">Widget manifest</h3>
+        <SectionHeader icon={<UxIconPolicy />} title="Widget manifest" level="sub" />
         <p className="muted" style={{ marginTop: 0 }}>
           Versioned contract for embeds and <code>postMessage</code> events (
           <code>protocol {WIDGET_BRIDGE_PROTOCOL}</code>
@@ -254,7 +255,7 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
       </div>
 
       <div className="widget-studio__host-guide">
-        <h3 className="widget-studio__manifest-title">Host integration (short version)</h3>
+        <SectionHeader icon={<UxIconLink />} title="Host integration (short version)" level="sub" />
         <ol className="widget-studio__host-steps muted">
           <li>
             Set the iframe <code>src</code> to your status URL with <code>embed=1</code> and{' '}
@@ -286,7 +287,7 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
       )}
 
       <div className="widget-studio__quick-copy">
-        <h3 className="widget-studio__manifest-title">Quick copy</h3>
+        <SectionHeader icon={<UxIconShare />} title="Quick copy" level="sub" />
         <p className="muted" style={{ marginTop: 0 }}>
           Copy common outputs without changing the snippet type below.
         </p>
@@ -452,7 +453,7 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
 
       {(kind === 'status_iframe' || kind === 'status_iframe_compact') && previewSrc && (
         <div className="widget-studio__preview">
-          <h3>Live preview</h3>
+          <SectionHeader icon={<UxIconMonitor />} title="Live preview" level="sub" />
           <p className="muted">Rendered in an iframe from this deployment (same as your embed).</p>
           <label className="widget-studio__debug-toggle toggle-row">
             <input
