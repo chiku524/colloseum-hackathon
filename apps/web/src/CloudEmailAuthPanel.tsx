@@ -1,7 +1,7 @@
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import type { WalletName } from '@solana/wallet-adapter-base';
 import { Keypair } from '@solana/web3.js';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { validateNewPassword } from './embeddedWalletVault';
 import {
   buildKeybagPayload,
@@ -13,6 +13,24 @@ import {
 import { fetchKeybagForUser, insertKeybag, updateKeybagPasswordWrap } from './keybag/cloudKeybagRepository';
 import { getSupabaseBrowserClient } from './supabase/client';
 import { STRONGHOLD_EMBEDDED_WALLET_NAME, type StrongholdEmbeddedWalletAdapter } from './StrongholdEmbeddedWalletAdapter';
+import { LoadingSpinner } from './LoadingSpinner';
+
+type BusyAction =
+  | 'sign-in'
+  | 'sign-up'
+  | 'forgot'
+  | 'create-keybag'
+  | 'unlock'
+  | 'password-recovery'
+  | 'recovery-rewrap';
+
+function AuthAnimatedStep({ stepKey, children }: { stepKey: string; children: ReactNode }) {
+  return (
+    <div key={stepKey} className="auth-gate-email auth-flow-step-enter">
+      {children}
+    </div>
+  );
+}
 
 export type CloudEmailAuthPanelProps = {
   embeddedAdapter: StrongholdEmbeddedWalletAdapter;
@@ -46,7 +64,8 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   const [savedMnemonicConfirm, setSavedMnemonicConfirm] = useState(false);
   const [authErr, setAuthErr] = useState<string | null>(null);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<BusyAction | null>(null);
+  const busy = busyAction !== null;
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
@@ -150,7 +169,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       setAuthErr('Enter your email.');
       return;
     }
-    setBusy(true);
+    setBusyAction('sign-up');
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -169,7 +188,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }, [email, password, supabase]);
 
@@ -180,7 +199,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       setAuthErr('Enter email and password.');
       return;
     }
-    setBusy(true);
+    setBusyAction('sign-in');
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
@@ -188,7 +207,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }, [email, password, supabase]);
 
@@ -199,7 +218,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       setAuthErr('Enter your email, then request a reset link.');
       return;
     }
-    setBusy(true);
+    setBusyAction('forgot');
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/`,
@@ -209,7 +228,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }, [email, supabase]);
 
@@ -232,7 +251,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       setAuthErr('Confirm that you saved your recovery phrase.');
       return;
     }
-    setBusy(true);
+    setBusyAction('create-keybag');
     try {
       const kp = Keypair.generate();
       const payload = await buildKeybagPayload(kp, password, mnemonicDraft);
@@ -242,14 +261,14 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }, [connectEmbedded, mnemonicDraft, password, savedMnemonicConfirm, session?.user.id, supabase]);
 
   const onUnlockKeybag = useCallback(async () => {
     setAuthErr(null);
     if (!keybagRow) return;
-    setBusy(true);
+    setBusyAction('unlock');
     try {
       const kp = await unlockKeypairFromKeybag(keybagRow, password);
       await connectEmbedded(kp);
@@ -257,7 +276,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }, [connectEmbedded, keybagRow, password]);
 
@@ -273,7 +292,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       setAuthErr(pwErr);
       return;
     }
-    setBusy(true);
+    setBusyAction('password-recovery');
     try {
       const { error: uErr } = await supabase.auth.updateUser({ password: newPassword });
       if (uErr) throw uErr;
@@ -300,7 +319,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }, [confirmPassword, connectEmbedded, newPassword, recoveryInput, session?.user.id, supabase]);
 
@@ -311,7 +330,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       setAuthErr('Enter your current account password (the one you use to sign in).');
       return;
     }
-    setBusy(true);
+    setBusyAction('recovery-rewrap');
     try {
       const patch = await rewrapKeybagPasswordFromRecovery(keybagRow, recoveryInput, password);
       await updateKeybagPasswordWrap(supabase, session.user.id, patch);
@@ -324,21 +343,24 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }, [connectEmbedded, keybagRow, password, recoveryInput, session?.user.id, supabase]);
 
   if (phase === 'loading') {
     return (
-      <div className="auth-gate-email">
-        <p className="muted small">Loading account…</p>
-      </div>
+      <AuthAnimatedStep stepKey="loading">
+        <div className="auth-loading-block">
+          <LoadingSpinner size="lg" label="Loading account" />
+          <p className="muted small">Loading account…</p>
+        </div>
+      </AuthAnimatedStep>
     );
   }
 
   if (phase === 'verify_email') {
     return (
-      <div className="auth-gate-email">
+      <AuthAnimatedStep stepKey="verify_email">
         <p className="auth-gate-lead">
           Confirm your email using the link we sent. After that, sign in with the same address and password.
         </p>
@@ -346,13 +368,13 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
         <button type="button" className="ghost auth-gate-submit" onClick={() => void onSignOut()}>
           Sign out / use a different email
         </button>
-      </div>
+      </AuthAnimatedStep>
     );
   }
 
   if (phase === 'create_keybag') {
     return (
-      <div className="auth-gate-email">
+      <AuthAnimatedStep stepKey="create_keybag">
         <h3 className="auth-gate-h3">Save your recovery phrase</h3>
         <p className="muted small">
           This phrase is the only way to recover your Solana wallet if you reset your password. Stronghold never sees it
@@ -378,19 +400,31 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
           />
         </label>
         {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
-        <button type="button" className="auth-gate-submit" disabled={busy} onClick={() => void onCreateKeybag()}>
-          {busy ? 'Creating wallet…' : 'Create wallet & continue'}
+        <button
+          type="button"
+          className={`auth-gate-submit${busyAction === 'create-keybag' ? ' auth-gate-submit--with-spinner' : ''}`}
+          disabled={busy}
+          onClick={() => void onCreateKeybag()}
+        >
+          {busyAction === 'create-keybag' ? (
+            <>
+              <LoadingSpinner size="sm" label="Creating wallet" />
+              <span>Creating wallet…</span>
+            </>
+          ) : (
+            'Create wallet & continue'
+          )}
         </button>
         <button type="button" className="ghost auth-gate-back" onClick={() => void onSignOut()}>
           Sign out
         </button>
-      </div>
+      </AuthAnimatedStep>
     );
   }
 
   if (phase === 'unlock_keybag') {
     return (
-      <div className="auth-gate-email">
+      <AuthAnimatedStep stepKey="unlock_keybag">
         <p className="muted small">Signed in as {session?.user.email}. Enter your password to unlock your email wallet.</p>
         <label className="auth-field">
           <span>Password</span>
@@ -403,8 +437,20 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
         </label>
         {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
         {infoMsg ? <p className="muted small">{infoMsg}</p> : null}
-        <button type="button" className="auth-gate-submit" disabled={busy} onClick={() => void onUnlockKeybag()}>
-          {busy ? 'Unlocking…' : 'Unlock email wallet'}
+        <button
+          type="button"
+          className={`auth-gate-submit${busyAction === 'unlock' ? ' auth-gate-submit--with-spinner' : ''}`}
+          disabled={busy}
+          onClick={() => void onUnlockKeybag()}
+        >
+          {busyAction === 'unlock' ? (
+            <>
+              <LoadingSpinner size="sm" label="Unlocking wallet" />
+              <span>Unlocking…</span>
+            </>
+          ) : (
+            'Unlock email wallet'
+          )}
         </button>
         <button type="button" className="ghost auth-gate-back" onClick={() => void onForgotPassword()}>
           Forgot password (email link)
@@ -423,13 +469,13 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
         <button type="button" className="ghost auth-gate-back" onClick={() => void onSignOut()}>
           Sign out
         </button>
-      </div>
+      </AuthAnimatedStep>
     );
   }
 
   if (phase === 'password_recovery') {
     return (
-      <div className="auth-gate-email">
+      <AuthAnimatedStep stepKey="password_recovery">
         <h3 className="auth-gate-h3">Finish password reset</h3>
         <p className="muted small">
           Set a new account password and enter your recovery phrase so your Solana key can be re-encrypted. If you have
@@ -461,19 +507,26 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
         {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
         <button
           type="button"
-          className="auth-gate-submit"
+          className={`auth-gate-submit${busyAction === 'password-recovery' ? ' auth-gate-submit--with-spinner' : ''}`}
           disabled={busy}
           onClick={() => void onPasswordRecoveryComplete()}
         >
-          {busy ? 'Saving…' : 'Update password & restore wallet'}
+          {busyAction === 'password-recovery' ? (
+            <>
+              <LoadingSpinner size="sm" label="Saving" />
+              <span>Saving…</span>
+            </>
+          ) : (
+            'Update password & restore wallet'
+          )}
         </button>
-      </div>
+      </AuthAnimatedStep>
     );
   }
 
   if (phase === 'recovery_rewrap') {
     return (
-      <div className="auth-gate-email">
+      <AuthAnimatedStep stepKey="recovery_rewrap">
         <h3 className="auth-gate-h3">Restore with recovery phrase</h3>
         <p className="muted small">
           Use this if your password unlock fails but you still know your account password. Your phrase re-wraps the same
@@ -498,19 +551,31 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
           />
         </label>
         {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
-        <button type="button" className="auth-gate-submit" disabled={busy} onClick={() => void onRecoveryRewrapOnly()}>
-          {busy ? 'Restoring…' : 'Restore wallet'}
+        <button
+          type="button"
+          className={`auth-gate-submit${busyAction === 'recovery-rewrap' ? ' auth-gate-submit--with-spinner' : ''}`}
+          disabled={busy}
+          onClick={() => void onRecoveryRewrapOnly()}
+        >
+          {busyAction === 'recovery-rewrap' ? (
+            <>
+              <LoadingSpinner size="sm" label="Restoring wallet" />
+              <span>Restoring…</span>
+            </>
+          ) : (
+            'Restore wallet'
+          )}
         </button>
         <button type="button" className="ghost auth-gate-back" onClick={() => setPhase('unlock_keybag')}>
           Back
         </button>
-      </div>
+      </AuthAnimatedStep>
     );
   }
 
   /* phase === 'auth' */
   return (
-    <div className="auth-gate-email">
+    <AuthAnimatedStep stepKey={`auth-${emailTab}`}>
       <p className="muted small">
         Email accounts use Supabase Auth (verification + password reset). Your Solana key is encrypted in the browser and
         only ciphertext is stored in your database.
@@ -556,18 +621,54 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
 
       {emailTab === 'sign-in' ? (
         <>
-          <button type="button" className="auth-gate-submit" disabled={busy} onClick={() => void onSignIn()}>
-            {busy ? 'Signing in…' : 'Sign in'}
+          <button
+            type="button"
+            className={`auth-gate-submit${busyAction === 'sign-in' ? ' auth-gate-submit--with-spinner' : ''}`}
+            disabled={busy}
+            onClick={() => void onSignIn()}
+          >
+            {busyAction === 'sign-in' ? (
+              <>
+                <LoadingSpinner size="sm" label="Signing in" />
+                <span>Signing in…</span>
+              </>
+            ) : (
+              'Sign in'
+            )}
           </button>
-          <button type="button" className="ghost auth-gate-back" disabled={busy} onClick={() => void onForgotPassword()}>
-            Email me a reset link
+          <button
+            type="button"
+            className={`ghost auth-gate-back${busyAction === 'forgot' ? ' auth-gate-submit--with-spinner' : ''}`}
+            disabled={busy}
+            onClick={() => void onForgotPassword()}
+          >
+            {busyAction === 'forgot' ? (
+              <>
+                <LoadingSpinner size="sm" label="Sending reset email" />
+                <span>Sending…</span>
+              </>
+            ) : (
+              'Email me a reset link'
+            )}
           </button>
         </>
       ) : (
-        <button type="button" className="auth-gate-submit" disabled={busy} onClick={() => void onSignUp()}>
-          {busy ? 'Creating account…' : 'Register & verify email'}
+        <button
+          type="button"
+          className={`auth-gate-submit${busyAction === 'sign-up' ? ' auth-gate-submit--with-spinner' : ''}`}
+          disabled={busy}
+          onClick={() => void onSignUp()}
+        >
+          {busyAction === 'sign-up' ? (
+            <>
+              <LoadingSpinner size="sm" label="Creating account" />
+              <span>Creating account…</span>
+            </>
+          ) : (
+            'Register & verify email'
+          )}
         </button>
       )}
-    </div>
+    </AuthAnimatedStep>
   );
 }
