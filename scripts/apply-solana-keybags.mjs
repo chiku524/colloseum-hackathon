@@ -59,7 +59,16 @@ if (statements.length === 0) {
   process.exit(1);
 }
 
-const client = new pg.Client({ connectionString });
+/** Supabase / AWS RDS chains often fail Node's default TLS verification; same as many Postgres GUI clients. */
+function sslOptionForConnectionString(cs) {
+  if (/supabase\.(co|com)|pooler\.supabase\.com/i.test(cs)) {
+    return { rejectUnauthorized: false };
+  }
+  return undefined;
+}
+
+const ssl = sslOptionForConnectionString(connectionString);
+const client = new pg.Client(ssl ? { connectionString, ssl } : { connectionString });
 
 try {
   await client.connect();

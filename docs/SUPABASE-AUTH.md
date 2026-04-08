@@ -37,6 +37,11 @@ Optional secrets file (gitignored): copy `.env.supabase.example` → `.env.supab
 
 If you skip automation, paste `supabase/migrations/001_solana_keybags.sql` into the **Supabase SQL Editor** and set **Authentication → URL configuration** manually.
 
+### Troubleshooting
+
+- **`self-signed certificate in certificate chain`** when running `setup:apply-keybags` — fixed in current scripts by relaxing TLS verification for `*.supabase.co` hosts. Re-run `npm run setup:apply-keybags`. If migration still fails on **port 6543** (pooler), set `SUPABASE_DB_URL` in `.env.supabase.local` to the **direct** URI (port **5432**) from Supabase → Settings → Database.
+- **`401` / `JWT could not be decoded`** for `setup:supabase-auth-urls` — you used a **project API key** (`eyJ...`). Create a **personal access token** at [Account → Access tokens](https://supabase.com/dashboard/account/tokens) and set `SUPABASE_ACCESS_TOKEN` to that value only.
+
 ## Setup
 
 1. Create a project at [supabase.com](https://supabase.com).

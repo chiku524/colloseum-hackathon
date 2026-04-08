@@ -40,6 +40,22 @@ if (!token) {
   console.error(`Set SUPABASE_ACCESS_TOKEN (from https://supabase.com/dashboard/account/tokens )`);
   process.exit(1);
 }
+
+if (token.startsWith('eyJ')) {
+  console.error(`Wrong token type: value looks like a Supabase project JWT (anon or service_role key).
+
+The Management API needs a **personal access token** from your **Supabase account**, not from Vercel env:
+  1. Open https://supabase.com/dashboard/account/tokens
+  2. Generate new token (may look like sbp_... or a long opaque string — not eyJ...)
+
+Then:
+  SUPABASE_ACCESS_TOKEN=<that token> npm run setup:supabase-auth-urls
+
+Or set URLs manually: Dashboard → Authentication → URL configuration
+`);
+  process.exit(1);
+}
+
 if (!ref) {
   console.error(
     `Set SUPABASE_PROJECT_REF or VITE_PUBLIC_SUPABASE_URL / VITE_SUPABASE_URL (e.g. https://xxxxx.supabase.co)`,
