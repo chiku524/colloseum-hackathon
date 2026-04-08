@@ -2,6 +2,7 @@
 .env.local
 .env.development.local
 apps/web/.env.development.local
+.env.supabase.local
 *.pem
 target/
 .anchor/

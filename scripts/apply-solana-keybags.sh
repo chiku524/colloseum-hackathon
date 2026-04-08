@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Apply solana_keybags migration using psql (Postgres client).
+# Cross-platform alternative (Node): npm run setup:apply-keybags
 #
 # Usage (get password from Supabase → Project Settings → Database):
 #   export SUPABASE_DB_URL='postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres?sslmode=require'

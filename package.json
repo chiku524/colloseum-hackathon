@@ -27,7 +27,11 @@
     "devnet:deploy": "bash scripts/devnet-deploy-docker.sh",
     "vercel:generate-env": "node scripts/generate-vercel-paste-env.mjs",
     "vercel:apply-env": "bash scripts/vercel-apply-env-from-paste.sh",
-    "db:apply:keybags": "bash scripts/apply-solana-keybags.sh"
+    "db:apply:keybags": "bash scripts/apply-solana-keybags.sh",
+    "setup:check": "node scripts/check-supabase-setup.mjs",
+    "setup:apply-keybags": "node scripts/apply-solana-keybags.mjs",
+    "setup:supabase-open": "node scripts/open-supabase-dashboard.mjs",
+    "setup:supabase-auth-urls": "node scripts/supabase-set-auth-urls.mjs"
   },
   "devDependencies": {
     "@coral-xyz/anchor": "0.30.1",
@@ -38,6 +42,7 @@
     "@types/node": "^20.11.30",
     "chai": "^4.4.1",
     "mocha": "^10.4.0",
+    "pg": "^8.20.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }

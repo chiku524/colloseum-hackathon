@@ -21,16 +21,21 @@ npm run dev
 
 `apps/web/.env.development.local` is **gitignored**; it should contain `VITE_PUBLIC_SUPABASE_*` (or equivalent) from Vercel.
 
-**Apply `solana_keybags` via terminal** (needs Postgres password from Supabase → **Settings → Database**, not the anon key):
+### Setup scripts (repo root)
 
-```bash
-export SUPABASE_DB_URL='postgresql://postgres:YOUR_DB_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres?sslmode=require'
-npm run db:apply:keybags
-```
+| Command | What it does |
+|--------|----------------|
+| `npm run setup:check` | Verifies pulled Vite env + whether a DB URL is available (does not print secrets). |
+| `npm run setup:apply-keybags` | Runs `001_solana_keybags.sql` via **Node + `pg`** (works on Windows). Uses `POSTGRES_URL*` from Vercel pull, or `SUPABASE_DB_URL` / `DATABASE_URL`, or overrides from `.env.supabase.local`. Prefer **direct** Postgres (port **5432**); poolers can fail on DDL. |
+| `npm run db:apply:keybags` | Same migration using **`psql`** + `SUPABASE_DB_URL` (bash / Mac / Linux with client tools). |
+| `npm run setup:supabase-open` | Opens the dashboard **SQL** and **Auth URL** pages for your project (needs URL in env for project ref). |
+| `npm run setup:supabase-open -- sql` | SQL editor only. |
+| `npm run setup:supabase-open -- auth` | Auth URL configuration only. |
+| `npm run setup:supabase-auth-urls` | **PATCH**es `site_url` + `uri_allow_list` via [Supabase Management API](https://supabase.com/docs/reference/api/introduction). Needs `SUPABASE_ACCESS_TOKEN` ([account tokens](https://supabase.com/dashboard/account/tokens)). Optional: `SUPABASE_SITE_URL`, `SUPABASE_URI_ALLOW_LIST` (comma-separated). |
 
-Requires `psql` on your PATH (e.g. [Postgres client](https://www.postgresql.org/download/) or `brew install libpq`). If you skip this, paste `supabase/migrations/001_solana_keybags.sql` into the **Supabase SQL Editor** instead.
+Optional secrets file (gitignored): copy `.env.supabase.example` → `.env.supabase.local` for `SUPABASE_DB_URL` and/or `SUPABASE_ACCESS_TOKEN`.
 
-**Auth redirect URLs** still have to be set in the Supabase dashboard (**Authentication → URL configuration**). There is no safe one-liner without a personal access token.
+If you skip automation, paste `supabase/migrations/001_solana_keybags.sql` into the **Supabase SQL Editor** and set **Authentication → URL configuration** manually.
 
 ## Setup
 
