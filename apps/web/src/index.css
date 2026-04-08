@@ -2098,3 +2098,231 @@ a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Auth + onboarding gate */
+.auth-gate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--stone-deep) 88%, black);
+  backdrop-filter: blur(8px);
+}
+
+.auth-gate-panel {
+  width: min(440px, 100%);
+  max-height: min(90vh, 720px);
+  overflow-y: auto;
+  padding: 1.75rem 1.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+.auth-gate-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.auth-gate-brand-mark {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.auth-gate-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.auth-gate-tagline {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.auth-gate-h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.auth-gate-h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.auth-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.auth-check input {
+  margin-top: 0.2rem;
+}
+
+.auth-mnemonic-display {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  min-height: 4.5rem;
+}
+
+.auth-gate-lead {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.auth-gate-section {
+  padding-top: 0.25rem;
+}
+
+.auth-gate-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.auth-gate-tab {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--stone-mid);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-gate-tab--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  color: var(--text);
+}
+
+.auth-gate-wallet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.auth-gate-wallet-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.auth-gate-email {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.auth-gate-email-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+}
+
+.auth-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: inherit;
+}
+
+.auth-link--active {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.auth-field input,
+.auth-field-textarea {
+  font-family: var(--font);
+  font-size: 0.92rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--stone-mid);
+  color: var(--text);
+}
+
+.auth-field-textarea {
+  resize: vertical;
+  min-height: 4rem;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.auth-gate-submit {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.auth-gate-back {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.auth-gate-err {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--danger);
+}
+
+.auth-gate-pubkey {
+  font-size: 0.75rem;
+  word-break: break-all;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: var(--stone-mid);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 1rem;
+}
+
+.auth-gate-recovery-hint {
+  margin: 0 0 0.25rem;
+}
+
+.auth-gate-hidden-app {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.small {
+  font-size: 0.82rem;
+}

@@ -37,6 +37,7 @@ import {
   proposalsToCsv,
 } from './auditExport';
 import { mergeSplitsIntoPolicy } from './csvPolicy';
+import { readOnboarding, type OnboardingPayloadV1 } from './onboardingStorage';
 import { ensureWalletAta, recipientAtaForMint } from './splUtil';
 import { inferClusterLabel } from './rpcCluster';
 import { CLUSTER_LABELS } from './solanaCluster';
@@ -221,6 +222,22 @@ export default function App() {
   const [initName, setInitName] = useState('My treasury');
   const [initApproversText, setInitApproversText] = useState('');
   const [initThreshold, setInitThreshold] = useState('1');
+
+  useEffect(() => {
+    const apply = (o: OnboardingPayloadV1 | null | undefined) => {
+      if (!o?.complete || o.v !== 1) return;
+      setInitName(o.projectName);
+      setProjectIdStr(o.projectId);
+      setInitApproversText(o.approversText);
+      setInitThreshold(o.threshold);
+    };
+    apply(readOnboarding());
+    const onApplied = (e: Event) => {
+      apply((e as CustomEvent<OnboardingPayloadV1>).detail);
+    };
+    window.addEventListener('stronghold-onboarding-applied', onApplied);
+    return () => window.removeEventListener('stronghold-onboarding-applied', onApplied);
+  }, []);
   const [autoMode, setAutoMode] = useState('1');
   const [autoPaused, setAutoPaused] = useState(false);
   const [autoInterval, setAutoInterval] = useState('60');
@@ -1306,7 +1323,9 @@ export default function App() {
             {inferClusterLabel(connection.rpcEndpoint)}
           </span>
           <WalletMultiButton />
-          <p className="muted app-header__wallet-hint">Disconnect or switch accounts from your wallet extension.</p>
+          <p className="muted app-header__wallet-hint">
+            Disconnect or switch accounts from your wallet, including the in-browser email wallet.
+          </p>
         </div>
       </header>
 
@@ -1318,8 +1337,8 @@ export default function App() {
           <div className="start-here-strip__content">
             <strong className="start-here-strip__head">Start here</strong>
             <ol className="start-here-strip__steps">
-              <li>Connect your Solana wallet above.</li>
-              <li>Enter your project number (same as when you created the team).</li>
+              <li>Sign in with a wallet extension or your email wallet (header).</li>
+              <li>Confirm your project number matches onboarding (Setup if you need to change it).</li>
               <li>Open Overview and tap Refresh data to load balances and payout requests.</li>
             </ol>
           </div>
