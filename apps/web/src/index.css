@@ -1061,9 +1061,12 @@ pre.compact-block {
   min-width: 8rem;
 }
 
+input:not([type]),
 input[type='number'],
 input[type='text'] {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: var(--bg);
   border: 1px solid var(--border);
   color: inherit;
@@ -1073,7 +1076,29 @@ input[type='text'] {
   font-size: 0.88rem;
 }
 
+/* Match text inputs (e.g. Proposals tab); scoped so .tabs-mobile-select stays custom */
+.field select {
+  cursor: pointer;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  color: inherit;
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 2.1rem 0.45rem 0.55rem;
+  font: inherit;
+  font-size: 0.88rem;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 0.8rem) 50%, calc(100% - 0.5rem) 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--accent);
@@ -1461,9 +1486,12 @@ code {
 }
 
 /* Widget studio (main app) */
+.widget-studio__form {
+  margin-bottom: 0.25rem;
+}
+
 .widget-studio__fields {
   flex-wrap: wrap;
-  margin-bottom: 0.5rem;
 }
 
 .widget-studio__kind {

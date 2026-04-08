@@ -339,69 +339,77 @@ export function WidgetStudio({ projectDefaults, policyText, onCopySuccess, onCop
         </div>
       </div>
 
-      <div className="field-row widget-studio__fields">
-        <div className="field" style={{ flex: '1 1 12rem' }}>
-          <label htmlFor="ws-team">Team lead wallet</label>
-          <input
-            id="ws-team"
-            value={teamLead}
-            onChange={(e) => setTeamLead(e.target.value)}
-            placeholder="Solana wallet address"
-            autoComplete="off"
-            disabled={Boolean(embedToken.trim())}
-          />
+      <div className="form-grid widget-studio__form">
+        <div className="field-row widget-studio__fields">
+          <div className="field" style={{ flex: '1 1 12rem' }}>
+            <label htmlFor="ws-team">Team lead wallet</label>
+            <input
+              id="ws-team"
+              type="text"
+              value={teamLead}
+              onChange={(e) => setTeamLead(e.target.value)}
+              placeholder="Solana wallet address"
+              autoComplete="off"
+              disabled={Boolean(embedToken.trim())}
+            />
+          </div>
+          <div className="field" style={{ flex: '0 0 7rem' }}>
+            <label htmlFor="ws-pid">Project ID</label>
+            <input
+              id="ws-pid"
+              type="text"
+              inputMode="numeric"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              placeholder="0"
+              autoComplete="off"
+              disabled={Boolean(embedToken.trim())}
+            />
+          </div>
+          <div className="field" style={{ flex: '1 1 10rem' }}>
+            <label htmlFor="ws-rpc">Custom network URL (optional)</label>
+            <input
+              id="ws-rpc"
+              type="text"
+              value={rpc}
+              onChange={(e) => setRpc(e.target.value)}
+              placeholder="https://…"
+              autoComplete="off"
+            />
+          </div>
         </div>
-        <div className="field" style={{ flex: '0 0 7rem' }}>
-          <label htmlFor="ws-pid">Project ID</label>
-          <input
-            id="ws-pid"
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            placeholder="0"
-            autoComplete="off"
-            disabled={Boolean(embedToken.trim())}
-          />
-        </div>
-        <div className="field" style={{ flex: '1 1 10rem' }}>
-          <label htmlFor="ws-rpc">Custom network URL (optional)</label>
-          <input
-            id="ws-rpc"
-            value={rpc}
-            onChange={(e) => setRpc(e.target.value)}
-            placeholder="https://…"
-            autoComplete="off"
-          />
-        </div>
-      </div>
 
-      <div className="field" style={{ marginBottom: '1rem' }}>
-        <label htmlFor="ws-jwt">Embed JWT (optional)</label>
-        <input
-          id="ws-jwt"
-          value={embedToken}
-          onChange={(e) => setEmbedToken(e.target.value)}
-          placeholder="From POST /api/v1/embed-token — keeps wallet addresses out of the link"
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </div>
+        <div className="field">
+          <label htmlFor="ws-jwt">Embed JWT (optional)</label>
+          <input
+            id="ws-jwt"
+            type="text"
+            value={embedToken}
+            onChange={(e) => setEmbedToken(e.target.value)}
+            placeholder="From POST /api/v1/embed-token — keeps wallet addresses out of the link"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
 
-      <div className="field" style={{ marginBottom: '1rem' }}>
-        <label htmlFor="ws-parent">Parent origin for postMessage (optional)</label>
-        <input
-          id="ws-parent"
-          value={hostParentOrigin}
-          onChange={(e) => setHostParentOrigin(e.target.value)}
-          placeholder="https://myapp.com — no path; must match the page that hosts the iframe"
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <p className="muted" style={{ marginTop: '0.35rem', fontSize: '0.82rem' }}>
-          When set, appended as <code>parent_origin</code> on embed URLs. The iframe sends <code>ready</code>,{' '}
-          <code>loading</code>, <code>error</code>, and <code>snapshot</code> events to <code>window.parent</code> only at
-          this origin. Use <strong>http://localhost</strong> or <strong>http://127.0.0.1</strong> for local HTTP; production
-          parents should use <strong>https</strong>.
-        </p>
+        <div className="field">
+          <label htmlFor="ws-parent">Parent origin for postMessage (optional)</label>
+          <input
+            id="ws-parent"
+            type="text"
+            value={hostParentOrigin}
+            onChange={(e) => setHostParentOrigin(e.target.value)}
+            placeholder="https://myapp.com — no path; must match the page that hosts the iframe"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <p className="muted field-hint">
+            When set, appended as <code>parent_origin</code> on embed URLs. The iframe sends <code>ready</code>,{' '}
+            <code>loading</code>, <code>error</code>, and <code>snapshot</code> events to <code>window.parent</code> only at
+            this origin. Use <strong>http://localhost</strong> or <strong>http://127.0.0.1</strong> for local HTTP; production
+            parents should use <strong>https</strong>.
+          </p>
+        </div>
       </div>
 
       <div className="widget-studio__kind" role="group" aria-label="Widget type">
