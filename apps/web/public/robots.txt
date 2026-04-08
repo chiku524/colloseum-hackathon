@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://colloseum-hackathon.vercel.app/sitemap.xml
+Sitemap: https://web3stronghold.vercel.app/sitemap.xml

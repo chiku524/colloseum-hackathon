@@ -1,5 +1,5 @@
 {
-  "name": "colloseum-hackathon",
+  "name": "web3stronghold",
   "private": true,
   "engines": {
     "node": ">=18.18"
@@ -28,7 +28,9 @@
     "vercel:generate-env": "node scripts/generate-vercel-paste-env.mjs",
     "vercel:apply-env": "bash scripts/vercel-apply-env-from-paste.sh",
     "db:apply:keybags": "bash scripts/apply-solana-keybags.sh",
+    "setup:install-psql": "powershell -ExecutionPolicy Bypass -File scripts/install-postgresql-client.ps1",
     "setup:check": "node scripts/check-supabase-setup.mjs",
+    "setup:post-keybags": "node scripts/supabase-post-migration.mjs",
     "setup:apply-keybags": "node scripts/apply-solana-keybags.mjs",
     "setup:supabase-open": "node scripts/open-supabase-dashboard.mjs",
     "setup:supabase-auth-urls": "node scripts/supabase-set-auth-urls.mjs",
@@ -45,6 +47,7 @@
     "chai": "^4.4.1",
     "mocha": "^10.4.0",
     "pg": "^8.20.0",
+    "supabase": "^2.84.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }

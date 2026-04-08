@@ -161,6 +161,9 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       if (data.user && !data.session) {
         setInfoMsg('Check your email to confirm your address, then sign in here.');
         setPhase('verify_email');
+      } else if (data.user && data.session) {
+        // Email confirmation disabled in Supabase: session exists immediately; onAuthStateChange will route.
+        setInfoMsg('Signed in. Continue when the wallet step appears.');
       }
       setPassword('');
     } catch (e) {

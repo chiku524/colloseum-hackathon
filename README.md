@@ -1,4 +1,4 @@
-# colloseum-hackathon
+# web3stronghold
 
 Solana **Creator Team Treasury** (**Stronghold** web app) — on-chain vault, multi-approver releases, timelocks, policy hashing, and a team-lead web dashboard with optional **Vercel** API/embed support.
 
@@ -59,7 +59,7 @@ See [`apps/web/README.md`](apps/web/README.md) and [`docs/ESSENTIALS.md`](docs/E
 - **Root Directory:** `apps/web`
 - **Env:** `npm run vercel:generate-env` → import **`apps/web/.env.vercel.paste`** (gitignored). Template without secrets: **`apps/web/vercel.environment.template`**. Details in **`apps/web/.env.example`** and **`docs/SECURITY-AND-EMBED.md`**.
 - After changing **`VITE_*`**, trigger a new deployment.
-- **GitHub Actions:** pushes to **`main`** run **`.github/workflows/vercel-production.yml`** when the repo secret **`VERCEL_TOKEN_HACKATHON`** is set (create a token under [Vercel → Account → Tokens](https://vercel.com/account/tokens)). **`/.vercel/project.json`** at the **repository root** links the CLI to **nicholas-chikujis-projects / colloseum-hackathon**; keep the Vercel project **Root Directory** set to **`apps/web`** (do not combine that with `vercel --cwd apps/web` or paths double).
+- **GitHub Actions:** pushes to **`main`** run **`.github/workflows/vercel-production.yml`** when the repo secret **`VERCEL_TOKEN_HACKATHON`** is set (create a token under [Vercel → Account → Tokens](https://vercel.com/account/tokens)). **`/.vercel/project.json`** or **`apps/web/.vercel/project.json`** links the CLI to your Vercel project (e.g. **web3stronghold**); keep **Root Directory** set to **`apps/web`** (do not combine that with `vercel --cwd apps/web` or paths double). If you renamed the GitHub repo, reconnect the project under **Vercel → Project → Settings → Git** to **chiku524/web3stronghold**.
 
 ## Colosseum Copilot (idea research)
 

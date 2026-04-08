@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-/** Repository root (colloseum-hackathon/). */
+/** Repository root (web3stronghold/). */
 export const REPO_ROOT = join(__dirname, '..', '..');
 
 /**

@@ -10,7 +10,7 @@
 #   bash scripts/apply-solana-keybags.sh 'postgresql://postgres:...'
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SQL="$ROOT/supabase/migrations/001_solana_keybags.sql"
+MIGRATIONS_DIR="$ROOT/supabase/migrations"
 URL="${1:-${SUPABASE_DB_URL:-}}"
 
 if [[ -z "$URL" ]]; then
@@ -24,5 +24,9 @@ if ! command -v psql >/dev/null 2>&1; then
   exit 1
 fi
 
-psql "$URL" -v ON_ERROR_STOP=1 -f "$SQL"
-echo "OK: solana_keybags migration applied."
+for f in "$MIGRATIONS_DIR/001_solana_keybags.sql" "$MIGRATIONS_DIR/002_solana_keybags_grants.sql"; do
+  [[ -f "$f" ]] || { echo "Missing migration: $f" >&2; exit 1; }
+  psql "$URL" -v ON_ERROR_STOP=1 -f "$f"
+  echo "OK: applied $(basename "$f")"
+done
+echo "OK: all keybags migrations applied."
