@@ -14,6 +14,9 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   /** Supabase anon (public) key — RLS must protect `solana_keybags`. */
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  /** Vercel Supabase integration naming (same as above). */
+  readonly VITE_PUBLIC_SUPABASE_URL?: string;
+  readonly VITE_PUBLIC_SUPABASE_ANON_KEY?: string;
 }
 
 interface ImportMeta {

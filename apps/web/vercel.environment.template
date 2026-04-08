@@ -22,8 +22,12 @@ WEBHOOK_SIGNING_SECRET=REPLACE_WITH_ANOTHER_LONG_RANDOM_MIN_16_CHARS
 # CRANK_FEE_PAYER_JSON=[1,2,...]   # JSON array of fee payer secret key bytes (fund with SOL on that cluster)
 
 # Optional — cloud email (Supabase Auth + encrypted Solana keybag in Postgres)
+# Vercel Supabase integration often uses:
+# VITE_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+# VITE_PUBLIC_SUPABASE_ANON_KEY=your_anon_jwt
+# Or:
 # VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-# VITE_SUPABASE_ANON_KEY=your_anon_key
+# VITE_SUPABASE_ANON_KEY=your_anon_jwt
 
 # Optional
 # WEBHOOK_DELIVERY_URL=https://discord.com/api/webhooks/...

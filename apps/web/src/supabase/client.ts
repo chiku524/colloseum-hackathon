@@ -1,11 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseAnonKey, getSupabaseUrl, isSupabaseEnvPresent } from './supabaseEnv';
 
 let browserClient: SupabaseClient | null = null;
 
 export function isSupabaseConfigured(): boolean {
-  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
-  return Boolean(url && anon);
+  return isSupabaseEnvPresent();
 }
 
 /**
@@ -14,8 +13,8 @@ export function isSupabaseConfigured(): boolean {
 export function getSupabaseBrowserClient(): SupabaseClient | null {
   if (!isSupabaseConfigured()) return null;
   if (browserClient) return browserClient;
-  const url = import.meta.env.VITE_SUPABASE_URL!.trim();
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!.trim();
+  const url = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
   browserClient = createClient(url, anonKey, {
     auth: {
       persistSession: true,
