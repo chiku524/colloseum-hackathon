@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Apply solana_keybags migration using psql (Postgres client).
+#
+# Usage (get password from Supabase → Project Settings → Database):
+#   export SUPABASE_DB_URL='postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres?sslmode=require'
+#   bash scripts/apply-solana-keybags.sh
+#
+# Or pass URL as first argument:
+#   bash scripts/apply-solana-keybags.sh 'postgresql://postgres:...'
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SQL="$ROOT/supabase/migrations/001_solana_keybags.sql"
+URL="${1:-${SUPABASE_DB_URL:-}}"
+
+if [[ -z "$URL" ]]; then
+  echo "Missing database URL. Set SUPABASE_DB_URL or pass it as the first argument."
+  echo "Example: postgresql://postgres:PASSWORD@db.xxxxx.supabase.co:5432/postgres?sslmode=require"
+  exit 1
+fi
+
+if ! command -v psql >/dev/null 2>&1; then
+  echo "psql not found. Install Postgres client tools, or run the SQL in Supabase → SQL Editor."
+  exit 1
+fi
+
+psql "$URL" -v ON_ERROR_STOP=1 -f "$SQL"
+echo "OK: solana_keybags migration applied."

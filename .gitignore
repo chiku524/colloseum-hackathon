@@ -1,5 +1,7 @@
 .env
 .env.local
+.env.development.local
+apps/web/.env.development.local
 *.pem
 target/
 .anchor/
@@ -8,6 +10,7 @@ dist/
 node_modules/
 apps/web/api/idl.json
 **/*.rs.bk
+supabase/.temp/
 .agents/
 .claude/
 skills/

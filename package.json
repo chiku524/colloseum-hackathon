@@ -26,7 +26,8 @@
     "solana:devnet": "bash scripts/devnet-solana-docker.sh",
     "devnet:deploy": "bash scripts/devnet-deploy-docker.sh",
     "vercel:generate-env": "node scripts/generate-vercel-paste-env.mjs",
-    "vercel:apply-env": "bash scripts/vercel-apply-env-from-paste.sh"
+    "vercel:apply-env": "bash scripts/vercel-apply-env-from-paste.sh",
+    "db:apply:keybags": "bash scripts/apply-solana-keybags.sh"
   },
   "devDependencies": {
     "@coral-xyz/anchor": "0.30.1",
