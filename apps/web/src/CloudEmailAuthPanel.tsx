@@ -18,6 +18,7 @@ import {
   updateKeybagPasswordWrap,
 } from './keybag/cloudKeybagRepository';
 import { getSupabaseBrowserClient } from './supabase/client';
+import { authServiceUnavailableMessage, isAuthServiceUnavailableError } from './supabase/authErrors';
 import { STRONGHOLD_EMBEDDED_WALLET_NAME, type StrongholdEmbeddedWalletAdapter } from './StrongholdEmbeddedWalletAdapter';
 import { LoadingSpinner } from './LoadingSpinner';
 
@@ -53,6 +54,14 @@ type Phase =
   | 'unlock_keybag'
   | 'password_recovery'
   | 'recovery_rewrap';
+
+/** Cap initial getSession (refresh) wait so a bad/stale token + 503 storm does not block the gate for tens of seconds. */
+const SESSION_INIT_TIMEOUT_MS = 12_000;
+
+function formatAuthFlowError(err: unknown): string {
+  if (isAuthServiceUnavailableError(err)) return authServiceUnavailableMessage();
+  return err instanceof Error ? err.message : String(err);
+}
 
 export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconnect }: CloudEmailAuthPanelProps) {
   const supabase = getSupabaseBrowserClient()!;
@@ -145,10 +154,49 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     };
 
     void (async () => {
-      const {
-        data: { session: initial },
-      } = await supabase.auth.getSession();
-      await route(initial ?? null);
+      let settled = false;
+
+      const timeoutId = window.setTimeout(async () => {
+        if (cancelled || settled) return;
+        settled = true;
+        await supabase.auth.signOut({ scope: 'local' });
+        if (cancelled) return;
+        setAuthErr(
+          'Sign-in is taking too long (often when Supabase Auth is slow or down). Your saved session was cleared — try signing in again, or check https://status.supabase.com',
+        );
+        setPhase('auth');
+      }, SESSION_INIT_TIMEOUT_MS);
+
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        window.clearTimeout(timeoutId);
+        if (cancelled || settled) return;
+        settled = true;
+
+        if (sessionError && isAuthServiceUnavailableError(sessionError)) {
+          await supabase.auth.signOut({ scope: 'local' });
+          if (cancelled) return;
+          setAuthErr(authServiceUnavailableMessage());
+          setPhase('auth');
+          return;
+        }
+
+        const initial = sessionData.session;
+        await route(initial ?? null);
+      } catch (e) {
+        window.clearTimeout(timeoutId);
+        if (cancelled || settled) return;
+        settled = true;
+        if (isAuthServiceUnavailableError(e)) {
+          await supabase.auth.signOut({ scope: 'local' });
+          if (cancelled) return;
+          setAuthErr(authServiceUnavailableMessage());
+          setPhase('auth');
+          return;
+        }
+        setAuthErr(e instanceof Error ? e.message : String(e));
+        setPhase('auth');
+      }
     })();
 
     const {
@@ -192,7 +240,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       }
       setPassword('');
     } catch (e) {
-      setAuthErr(e instanceof Error ? e.message : String(e));
+      setAuthErr(formatAuthFlowError(e));
     } finally {
       setBusyAction(null);
     }
@@ -211,7 +259,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       if (error) throw error;
       setPassword('');
     } catch (e) {
-      setAuthErr(e instanceof Error ? e.message : String(e));
+      setAuthErr(formatAuthFlowError(e));
     } finally {
       setBusyAction(null);
     }
@@ -232,7 +280,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       if (error) throw error;
       setInfoMsg('If an account exists, you will receive an email with a reset link.');
     } catch (e) {
-      setAuthErr(e instanceof Error ? e.message : String(e));
+      setAuthErr(formatAuthFlowError(e));
     } finally {
       setBusyAction(null);
     }
