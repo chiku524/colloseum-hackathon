@@ -2,6 +2,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { CloudEmailAuthPanel } from './CloudEmailAuthPanel';
 import { BRAND_NAME, BRAND_TAGLINE } from './brand';
 import { BrandMark } from './BrandMark';
@@ -79,7 +80,9 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
         /* noop if nothing connected */
       }
       embeddedAdapter.setUnlockedKeypair(kp);
-      await select(STRONGHOLD_EMBEDDED_WALLET_NAME);
+      flushSync(() => {
+        select(STRONGHOLD_EMBEDDED_WALLET_NAME);
+      });
       await connect();
       setPassword('');
     } catch (e) {
@@ -109,7 +112,9 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
         /* noop */
       }
       embeddedAdapter.setUnlockedKeypair(kp);
-      await select(STRONGHOLD_EMBEDDED_WALLET_NAME);
+      flushSync(() => {
+        select(STRONGHOLD_EMBEDDED_WALLET_NAME);
+      });
       await connect();
       setPassword('');
     } catch (e) {
@@ -240,18 +245,7 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
                   </p>
                 </div>
               ) : isSupabaseConfigured() ? (
-                <CloudEmailAuthPanel
-                  embeddedAdapter={embeddedAdapter}
-                  select={async (name) => {
-                    await Promise.resolve(select(name));
-                  }}
-                  connect={async () => {
-                    await Promise.resolve(connect());
-                  }}
-                  disconnect={async () => {
-                    await Promise.resolve(disconnect());
-                  }}
-                />
+                <CloudEmailAuthPanel embeddedAdapter={embeddedAdapter} select={select} connect={connect} disconnect={disconnect} />
               ) : (
                 <div key="embedded-email" className="auth-gate-email auth-flow-step-enter">
                   {showVaultHint ? (

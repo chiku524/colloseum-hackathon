@@ -2,6 +2,7 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import type { WalletName } from '@solana/wallet-adapter-base';
 import { Keypair } from '@solana/web3.js';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { BRAND_NAME } from './brand';
 import { validateNewPassword } from './embeddedWalletVault';
 import {
@@ -48,7 +49,8 @@ function AuthAnimatedStep({ stepKey, children }: { stepKey: string; children: Re
 
 export type CloudEmailAuthPanelProps = {
   embeddedAdapter: StrongholdEmbeddedWalletAdapter;
-  select: (walletName: WalletName) => Promise<void>;
+  /** Must be synchronous (WalletProvider updates `wallet` on next render). */
+  select: (walletName: WalletName) => void;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
 };
@@ -125,7 +127,10 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       }
       // Must run after disconnect: embedded adapter.disconnect() clears the unlocked keypair.
       embeddedAdapter.setUnlockedKeypair(kp);
-      await select(STRONGHOLD_EMBEDDED_WALLET_NAME);
+      // select() only schedules React state; connect() would still see the old wallet → WalletNotSelectedError.
+      flushSync(() => {
+        select(STRONGHOLD_EMBEDDED_WALLET_NAME);
+      });
       await connect();
     },
     [connect, disconnect, embeddedAdapter, select],
