@@ -105,8 +105,8 @@ Same Supabase **Custom SMTP** screen; typical values:
 
 Sign-up can succeed in the app while **no message reaches the inbox** if SMTP delivery fails silently on Supabase’s side or mail is filtered.
 
-1. **Supabase → Logs → Auth** (or Log Explorer) — Look for mail/SMTP errors right after signup (authentication failures, rejected sender, connection errors).
-2. **Resend → Emails** (or your provider’s outbound log) — See if Supabase attempted a send and whether it bounced or was blocked.
+1. **Supabase → Logs → Auth** (or Log Explorer) — Look for mail/SMTP errors right after signup (authentication failures, rejected sender, connection errors). If **Resend shows no messages at all**, GoTrue usually never reached SMTP (misconfig, Auth error before send, or signup mail skipped) — fix starts in **Supabase**, not Resend.
+2. **Resend → Emails** (or your provider’s outbound log) — After a successful handoff, you should see outbound attempts. If the dashboard is empty, confirm **Custom SMTP** is enabled and saved in Supabase and that Auth was healthy when you triggered signup/resend.
 3. **Sender address** — The **SMTP “sender” / admin email** in Supabase must use an address on a domain **verified in Resend** (e.g. `noreply@web3stronghold.app`). A typo or unverified domain often means no delivery.
 4. **Redirect URL** — `emailRedirectTo` / `redirectTo` must match an entry under **Authentication → URL configuration → Redirect URLs**. The app can send a fixed production URL via **`VITE_AUTH_EMAIL_REDIRECT_ORIGIN`** (see `apps/web/vercel.environment.template`) so links stay allowlisted even when users register from `*.vercel.app`.
 5. **Spam / Promotions** — Ask the recipient to search for the sender domain or “Supabase”.

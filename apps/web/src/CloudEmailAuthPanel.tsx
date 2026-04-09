@@ -97,6 +97,10 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   const [savedMnemonicConfirm, setSavedMnemonicConfirm] = useState(false);
   const [authErr, setAuthErr] = useState<string | null>(null);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
+  /** When signUp returns a user but no session (email confirmation required), Auth does not expose the user on `session` yet — keep the address for verify UI + resend. */
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+  const pendingVerificationEmailRef = useRef<string | null>(null);
+  pendingVerificationEmailRef.current = pendingVerificationEmail;
   const [busyAction, setBusyAction] = useState<BusyAction | null>(null);
   const busy = busyAction !== null;
   const [resendCooldownSec, setResendCooldownSec] = useState(0);
@@ -151,6 +155,12 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       }
 
       if (!sess) {
+        // After signUp without session, GoTrue often emits null session — keep verify UI + pending email.
+        if (pendingVerificationEmailRef.current) {
+          setPhase('verify_email');
+          return;
+        }
+        setPendingVerificationEmail(null);
         setPhase('auth');
         setKeybagRow(null);
         setMnemonicDraft('');
@@ -160,6 +170,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       }
 
       if (!sess.user.email_confirmed_at) {
+        setPendingVerificationEmail(null);
         setPhase('verify_email');
         return;
       }
@@ -230,9 +241,12 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       });
       if (error) throw error;
       if (data.user && !data.session) {
+        const addr = (data.user.email ?? email.trim()).trim();
+        setPendingVerificationEmail(addr || null);
         setInfoMsg('Check your email to confirm your address, then sign in here.');
         setPhase('verify_email');
       } else if (data.user && data.session) {
+        setPendingVerificationEmail(null);
         // Email confirmation disabled in Supabase: session exists immediately; onAuthStateChange will route.
         setInfoMsg('Signed in. Continue when the wallet step appears.');
       }
@@ -285,7 +299,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   }, [email, supabase]);
 
   const onResendVerification = useCallback(async () => {
-    const addr = session?.user?.email;
+    const addr = (session?.user?.email ?? pendingVerificationEmail)?.trim();
     if (!addr) return;
     setAuthErr(null);
     setBusyAction('resend-verify');
@@ -303,11 +317,12 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     } finally {
       setBusyAction(null);
     }
-  }, [session?.user?.email, supabase]);
+  }, [pendingVerificationEmail, session?.user?.email, supabase]);
 
   const onSignOut = useCallback(async () => {
     setAuthErr(null);
     setInfoMsg(null);
+    setPendingVerificationEmail(null);
     await supabase.auth.signOut();
     embeddedAdapter.setUnlockedKeypair(null);
   }, [embeddedAdapter, supabase]);
@@ -458,7 +473,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   }
 
   if (phase === 'verify_email') {
-    const verifyEmail = session?.user?.email;
+    const verifyEmail = (session?.user?.email ?? pendingVerificationEmail ?? '').trim();
     const resendBlocked = resendCooldownSec > 0 || busy;
     return (
       <AuthAnimatedStep stepKey="verify_email">
@@ -475,7 +490,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
         <button
           type="button"
           className={`auth-gate-submit${busyAction === 'resend-verify' ? ' auth-gate-submit--with-spinner' : ''}`}
-          disabled={resendBlocked || !verifyEmail}
+          disabled={resendBlocked || !verifyEmail.length}
           onClick={() => void onResendVerification()}
         >
           {busyAction === 'resend-verify' ? (
