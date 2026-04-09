@@ -2,7 +2,6 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
-import { flushSync } from 'react-dom';
 import { CloudEmailAuthPanel } from './CloudEmailAuthPanel';
 import { BRAND_NAME, BRAND_TAGLINE } from './brand';
 import { BrandMark } from './BrandMark';
@@ -15,10 +14,8 @@ import {
   type OnboardingPayloadV1,
 } from './onboardingStorage';
 import { getSupabaseBrowserClient, isSupabaseConfigured } from './supabase/client';
-import {
-  STRONGHOLD_EMBEDDED_WALLET_NAME,
-  type StrongholdEmbeddedWalletAdapter,
-} from './StrongholdEmbeddedWalletAdapter';
+import { type StrongholdEmbeddedWalletAdapter } from './StrongholdEmbeddedWalletAdapter';
+import { connectUnlockedEmbeddedWallet } from './wallet/connectUnlockedEmbeddedWallet';
 
 function resetOnboardingProgress(): void {
   writeOnboarding({
@@ -74,16 +71,13 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
     setAuthBusy(true);
     try {
       const kp = await unlockVault(email, password);
-      try {
-        await disconnect();
-      } catch {
-        /* noop if nothing connected */
-      }
-      embeddedAdapter.setUnlockedKeypair(kp);
-      flushSync(() => {
-        select(STRONGHOLD_EMBEDDED_WALLET_NAME);
+      await connectUnlockedEmbeddedWallet({
+        disconnect,
+        select,
+        connect,
+        embeddedAdapter,
+        keypair: kp,
       });
-      await connect();
       setPassword('');
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
@@ -106,16 +100,13 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
     setAuthBusy(true);
     try {
       const kp = await createVault(email, password);
-      try {
-        await disconnect();
-      } catch {
-        /* noop */
-      }
-      embeddedAdapter.setUnlockedKeypair(kp);
-      flushSync(() => {
-        select(STRONGHOLD_EMBEDDED_WALLET_NAME);
+      await connectUnlockedEmbeddedWallet({
+        disconnect,
+        select,
+        connect,
+        embeddedAdapter,
+        keypair: kp,
       });
-      await connect();
       setPassword('');
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
