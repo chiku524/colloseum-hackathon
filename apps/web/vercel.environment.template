@@ -28,6 +28,10 @@ WEBHOOK_SIGNING_SECRET=REPLACE_WITH_ANOTHER_LONG_RANDOM_MIN_16_CHARS
 # Or:
 # VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 # VITE_SUPABASE_ANON_KEY=your_anon_jwt
+#
+# Recommended for production: same origin you list under Supabase → Auth → Redirect URLs
+# (confirm signup + password reset links). Use www or apex consistently.
+# VITE_AUTH_EMAIL_REDIRECT_ORIGIN=https://www.web3stronghold.app
 
 # Optional
 # WEBHOOK_DELIVERY_URL=https://discord.com/api/webhooks/...

@@ -101,6 +101,17 @@ Same Supabase **Custom SMTP** screen; typical values:
 
 ---
 
+## Troubleshooting: confirmation or reset email never arrives
+
+Sign-up can succeed in the app while **no message reaches the inbox** if SMTP delivery fails silently on Supabase’s side or mail is filtered.
+
+1. **Supabase → Logs → Auth** (or Log Explorer) — Look for mail/SMTP errors right after signup (authentication failures, rejected sender, connection errors).
+2. **Resend → Emails** (or your provider’s outbound log) — See if Supabase attempted a send and whether it bounced or was blocked.
+3. **Sender address** — The **SMTP “sender” / admin email** in Supabase must use an address on a domain **verified in Resend** (e.g. `noreply@web3stronghold.app`). A typo or unverified domain often means no delivery.
+4. **Redirect URL** — `emailRedirectTo` / `redirectTo` must match an entry under **Authentication → URL configuration → Redirect URLs**. The app can send a fixed production URL via **`VITE_AUTH_EMAIL_REDIRECT_ORIGIN`** (see `apps/web/vercel.environment.template`) so links stay allowlisted even when users register from `*.vercel.app`.
+5. **Spam / Promotions** — Ask the recipient to search for the sender domain or “Supabase”.
+6. **Rate limits** — Resend free tier and Supabase may throttle; wait a few minutes and use **Resend confirmation email** on the verify screen (after deploy) or call `auth.resend({ type: 'signup', … })` from the client.
+
 ## Troubleshooting: Auth unhealthy / 503 on `/auth/v1/token`
 
 If logs show `GOTRUE_SMTP_PORT` / `strconv.ParseInt` / `Failed to load configuration`, the **SMTP port** in project Auth config is not a plain integer. Fix in **Supabase Dashboard → Authentication → Emails / SMTP**: set **Port** to `465` or `587` only, save, wait for Auth to restart. Or run `npm run setup:supabase-smtp-resend` with `SUPABASE_SMTP_PORT=465` (no quotes in `.env` values).

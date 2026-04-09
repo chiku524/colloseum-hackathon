@@ -17,6 +17,11 @@ interface ImportMetaEnv {
   /** Vercel Supabase integration naming (same as above). */
   readonly VITE_PUBLIC_SUPABASE_URL?: string;
   readonly VITE_PUBLIC_SUPABASE_ANON_KEY?: string;
+  /**
+   * Production origin for Supabase email links (confirm / reset), e.g. https://www.web3stronghold.app
+   * Must be listed under Authentication → URL configuration → Redirect URLs.
+   */
+  readonly VITE_AUTH_EMAIL_REDIRECT_ORIGIN?: string;
 }
 
 interface ImportMeta {

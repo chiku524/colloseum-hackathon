@@ -23,6 +23,7 @@ import {
   clearSupabaseBrowserAuthStorage,
   isAuthServiceUnavailableError,
 } from './supabase/authErrors';
+import { getAuthEmailRedirectUrl } from './supabase/authRedirect';
 import { getSupabaseProjectRefFromUrl, getSupabaseUrl } from './supabase/supabaseEnv';
 import { STRONGHOLD_EMBEDDED_WALLET_NAME, type StrongholdEmbeddedWalletAdapter } from './StrongholdEmbeddedWalletAdapter';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -31,6 +32,7 @@ type BusyAction =
   | 'sign-in'
   | 'sign-up'
   | 'forgot'
+  | 'resend-verify'
   | 'create-keybag'
   | 'unlock'
   | 'password-recovery'
@@ -97,8 +99,18 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<BusyAction | null>(null);
   const busy = busyAction !== null;
+  const [resendCooldownSec, setResendCooldownSec] = useState(0);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
+
+  const resendCooldownActive = resendCooldownSec > 0;
+  useEffect(() => {
+    if (!resendCooldownActive) return;
+    const id = window.setInterval(() => {
+      setResendCooldownSec((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [resendCooldownActive]);
 
   const connectEmbedded = useCallback(
     async (kp: Keypair) => {
@@ -214,7 +226,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: `${window.location.origin}/` },
+        options: { emailRedirectTo: getAuthEmailRedirectUrl() },
       });
       if (error) throw error;
       if (data.user && !data.session) {
@@ -261,7 +273,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     setBusyAction('forgot');
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: getAuthEmailRedirectUrl(),
       });
       if (error) throw error;
       setInfoMsg('If an account exists, you will receive an email with a reset link.');
@@ -271,6 +283,27 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       setBusyAction(null);
     }
   }, [email, supabase]);
+
+  const onResendVerification = useCallback(async () => {
+    const addr = session?.user?.email;
+    if (!addr) return;
+    setAuthErr(null);
+    setBusyAction('resend-verify');
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: addr,
+        options: { emailRedirectTo: getAuthEmailRedirectUrl() },
+      });
+      if (error) throw error;
+      setInfoMsg('Another confirmation email was sent. Check spam or promotions; it can take a minute.');
+      setResendCooldownSec(60);
+    } catch (e) {
+      setAuthErr(formatAuthFlowError(e));
+    } finally {
+      setBusyAction(null);
+    }
+  }, [session?.user?.email, supabase]);
 
   const onSignOut = useCallback(async () => {
     setAuthErr(null);
@@ -425,12 +458,37 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   }
 
   if (phase === 'verify_email') {
+    const verifyEmail = session?.user?.email;
+    const resendBlocked = resendCooldownSec > 0 || busy;
     return (
       <AuthAnimatedStep stepKey="verify_email">
         <p className="auth-gate-lead">
           Confirm your email using the link we sent. After that, sign in with the same address and password.
         </p>
+        {verifyEmail ? (
+          <p className="muted small">
+            Sent to <strong>{verifyEmail}</strong>. If nothing arrives, check spam and that Resend/your SMTP sender domain is verified.
+          </p>
+        ) : null}
         {infoMsg ? <p className="muted small">{infoMsg}</p> : null}
+        {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
+        <button
+          type="button"
+          className={`auth-gate-submit${busyAction === 'resend-verify' ? ' auth-gate-submit--with-spinner' : ''}`}
+          disabled={resendBlocked || !verifyEmail}
+          onClick={() => void onResendVerification()}
+        >
+          {busyAction === 'resend-verify' ? (
+            <>
+              <LoadingSpinner size="sm" label="Sending" />
+              <span>Sending…</span>
+            </>
+          ) : resendCooldownSec > 0 ? (
+            `Resend email (${resendCooldownSec}s)`
+          ) : (
+            'Resend confirmation email'
+          )}
+        </button>
         <button type="button" className="ghost auth-gate-submit" onClick={() => void onSignOut()}>
           Sign out / use a different email
         </button>
