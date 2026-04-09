@@ -74,14 +74,15 @@ function formatAuthFlowError(err: unknown): string {
 function recoverFromStuckSupabaseAuth(setSupabaseEpoch: (u: (n: number) => number) => void): void {
   const ref = getSupabaseProjectRefFromUrl(getSupabaseUrl());
   if (ref) clearSupabaseBrowserAuthStorage(ref);
-  resetSupabaseBrowserClient();
   setSupabaseEpoch((n) => n + 1);
 }
 
 export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: CloudEmailAuthPanelProps) {
   const [supabaseEpoch, setSupabaseEpoch] = useState(0);
   const supabase = useMemo(() => {
-    resetSupabaseBrowserClient();
+    if (supabaseEpoch > 0) {
+      resetSupabaseBrowserClient();
+    }
     return getSupabaseBrowserClient()!;
   }, [supabaseEpoch]);
 

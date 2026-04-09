@@ -7,9 +7,16 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    global: 'globalThis',
+  },
   resolve: {
     alias: {
       '@idl': path.resolve(dir, '../../idl/creator_treasury.json'),
+      buffer: 'buffer',
     },
+  },
+  optimizeDeps: {
+    include: ['buffer'],
   },
 });
