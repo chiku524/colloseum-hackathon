@@ -39,8 +39,29 @@ const resendKey = (process.env.RESEND_API_KEY || process.env.SMTP_PASS || '').tr
 const senderEmail = (process.env.SUPABASE_SMTP_SENDER_EMAIL || 'noreply@web3stronghold.app').trim();
 const senderName = (process.env.SUPABASE_SMTP_SENDER_NAME || 'web3stronghold').trim();
 const smtpHost = (process.env.SUPABASE_SMTP_HOST || 'smtp.resend.com').trim();
-const smtpPort = String(process.env.SUPABASE_SMTP_PORT || '465').trim();
 const smtpUser = (process.env.SUPABASE_SMTP_USER || 'resend').trim();
+
+/** Supabase stores this as GOTRUE_SMTP_PORT — must be digits only (no quotes, no shell comments). */
+function normalizeSmtpPort(raw) {
+  let s = String(raw ?? '465').trim();
+  s = s.replace(/^["']|["']$/g, '');
+  s = s.split('#')[0].trim();
+  const n = Number.parseInt(s, 10);
+  if (!Number.isFinite(n) || n < 1 || n > 65535) {
+    throw new Error(
+      `Invalid SUPABASE_SMTP_PORT "${raw}". Use 465 or 587 only (no quotes, no comments). Example: SUPABASE_SMTP_PORT=465`,
+    );
+  }
+  return String(n);
+}
+
+let smtpPort;
+try {
+  smtpPort = normalizeSmtpPort(process.env.SUPABASE_SMTP_PORT);
+} catch (e) {
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+}
 
 if (!token) {
   console.error('Set SUPABASE_ACCESS_TOKEN (https://supabase.com/dashboard/account/tokens)');

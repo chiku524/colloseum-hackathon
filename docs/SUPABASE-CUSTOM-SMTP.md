@@ -19,7 +19,7 @@ This is the recommended path for **production** auth email when you want mail fr
    | Field | Value |
    | ----- | ----- |
    | Host | `smtp.resend.com` |
-   | Port | `465` (TLS) — see [Resend + Supabase](https://resend.com/docs/send-with-supabase-smtp) if your UI prefers `587` |
+   | Port | **`465`** or **`587`** — digits only. Do **not** paste quotes, spaces, or comments (e.g. wrong: `"465" # try 587`). Wrong values **crash Auth** (GoTrue exits; dashboard shows Auth unhealthy, sign-in **503**). |
    | Username | `resend` |
    | Password | Your Resend API key |
    | Sender email | e.g. `noreply@yourdomain.com` (must be on the verified domain) |
@@ -43,7 +43,8 @@ export RESEND_API_KEY="re_..."           # New key from Resend (never commit)
 # Optional overrides:
 # export SUPABASE_SMTP_SENDER_EMAIL="noreply@web3stronghold.app"
 # export SUPABASE_SMTP_SENDER_NAME="web3stronghold"
-# export SUPABASE_SMTP_PORT="465"        # or 587
+# export SUPABASE_SMTP_PORT=465
+# (or 587 — value must be digits only; never paste a whole commented line into the dashboard Port field)
 
 npm run setup:supabase-smtp-resend
 ```
@@ -99,6 +100,10 @@ Same Supabase **Custom SMTP** screen; typical values:
 - Password: SendGrid API key with Mail Send permission
 
 ---
+
+## Troubleshooting: Auth unhealthy / 503 on `/auth/v1/token`
+
+If logs show `GOTRUE_SMTP_PORT` / `strconv.ParseInt` / `Failed to load configuration`, the **SMTP port** in project Auth config is not a plain integer. Fix in **Supabase Dashboard → Authentication → Emails / SMTP**: set **Port** to `465` or `587` only, save, wait for Auth to restart. Or run `npm run setup:supabase-smtp-resend` with `SUPABASE_SMTP_PORT=465` (no quotes in `.env` values).
 
 ## Related repo docs
 
