@@ -1,7 +1,7 @@
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 import { StrictMode, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -24,8 +24,9 @@ function Root() {
   }
   const embeddedAdapter = embeddedAdapterRef.current;
 
+  // Phantom registers via the Wallet Standard; omit PhantomWalletAdapter to avoid duplicate registration warnings.
   const wallets = useMemo(
-    () => [embeddedAdapter, new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+    () => [embeddedAdapter, new SolflareWalletAdapter()],
     [embeddedAdapter],
   );
 

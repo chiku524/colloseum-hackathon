@@ -64,6 +64,7 @@ Run **`npm run setup:post-keybags`** — it executes **`setup:check`** and print
 - **`self-signed certificate in certificate chain`** on **`setup:apply-keybags`** — Often from a pooled/direct URL whose host still matches Supabase; the script retries with relaxed TLS or widens host matching. If it persists, paste the **Session** URI from the dashboard into **`SUPABASE_DB_URL`**.
 - **`permission denied for table solana_keybags`** (or insert/select fails after sign-in) — Run `002_solana_keybags_grants.sql` in the SQL Editor, or re-run `npm run setup:apply-keybags` so the `authenticated` role has `SELECT`/`INSERT`/`UPDATE` on the table.
 - **`duplicate key value violates unique constraint "solana_keybags_pkey"`** — A row for this user already exists (e.g. wallet creation succeeded once and the UI retried). The app should send you to **unlock**; if you still see the error, refresh after sign-in or check **Table Editor → `solana_keybags`** for your user.
+- **`503` on `/auth/v1/token?grant_type=refresh_token`** — Supabase Auth (GoTrue) is **unavailable** for the project (incident, maintenance, or paused project), not an app bug. Check [Supabase status](https://status.supabase.com/), dashboard **Project Settings** (project not paused), and try again later. **Clear site data** / sign out for this origin if the client keeps retrying and you see **GoTrue lock** errors in the console (those are a side effect of failed refresh storms).
 
 ## Setup
 
