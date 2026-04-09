@@ -1,0 +1,21 @@
+# Standalone Mailpit — SMTP sink + web UI (no third-party email API).
+#
+# For the full Supabase Docker stack, prefer merging instead:
+#   supabase/docker-compose.self-host-mailpit.yml
+# See supabase/self-host/README.md
+#
+# Run this file alone (no Supabase):
+#   docker compose -f supabase/mailpit-compose.yml up -d
+#   → UI http://localhost:8025 , SMTP localhost:1025
+#
+# If you use standalone Mailpit + self-hosted Auth, set in stack `.env`:
+#   SMTP_HOST=host.docker.internal   (Docker Desktop), or the host IP on Linux
+#   SMTP_PORT=1025
+
+services:
+  mailpit:
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    ports:
+      - "8025:8025" # Web UI
+      - "1025:1025" # SMTP (no TLS; dev / internal networks only)

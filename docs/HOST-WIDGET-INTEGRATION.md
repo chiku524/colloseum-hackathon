@@ -1,6 +1,6 @@
 # Host integration — embedded treasury status
 
-This page is the canonical checklist for embedding **Stronghold** read-only treasury status in **your** app and optionally receiving **`postMessage`** updates from the iframe.
+This page is the canonical checklist for embedding **web3stronghold** read-only treasury status in **your** app and optionally receiving **`postMessage`** updates from the iframe.
 
 Machine-readable details (iframe heights, event names, payload fields): **[`/widget-manifest.json`](../apps/web/public/widget-manifest.json)** on your deployed treasury app (same origin as the UI).
 

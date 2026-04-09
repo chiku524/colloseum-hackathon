@@ -1,6 +1,6 @@
 # web3stronghold
 
-Solana **Creator Team Treasury** (**Stronghold** web app) — on-chain vault, multi-approver releases, timelocks, policy hashing, and a team-lead web dashboard with optional **Vercel** API/embed support.
+Solana **Creator Team Treasury** (**web3stronghold** web app) — on-chain vault, multi-approver releases, timelocks, policy hashing, and a team-lead web dashboard with optional **Vercel** API/embed support.
 
 **New here?** Read **[`docs/ESSENTIALS.md`](docs/ESSENTIALS.md)** for what the app is for, roles, workflows, and configuration. Roadmap: [`docs/CREATOR-TREASURY-BUILD-PLAN.md`](docs/CREATOR-TREASURY-BUILD-PLAN.md).
 

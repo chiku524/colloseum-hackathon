@@ -1,6 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SolanaKeybagCryptoPayload, SolanaKeybagRow } from './cloudKeybagCrypto';
 
+/** Postgres `unique_violation` — e.g. existing `solana_keybags` row for this user. */
+export function isUniqueViolationError(err: unknown): boolean {
+  const code =
+    err && typeof err === 'object' && 'code' in err ? String((err as { code?: string }).code) : '';
+  if (code === '23505') return true;
+  const msg = err instanceof Error ? err.message : String(err);
+  return /duplicate key|unique constraint/i.test(msg);
+}
+
 export async function fetchKeybagForUser(
   supabase: SupabaseClient,
   userId: string,
@@ -28,7 +37,11 @@ export async function insertKeybag(
     sk_iv: payload.sk_iv,
     sk_ciphertext: payload.sk_ciphertext,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const wrapped = new Error(error.message) as Error & { code?: string };
+    wrapped.code = error.code;
+    throw wrapped;
+  }
 }
 
 export async function updateKeybagPasswordWrap(

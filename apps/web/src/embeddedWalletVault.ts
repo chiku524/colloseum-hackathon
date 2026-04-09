@@ -132,6 +132,6 @@ export async function unlockVault(email: string, password: string): Promise<Keyp
 }
 
 export function validateNewPassword(password: string): string | null {
-  if (password.length < 10) return 'Use at least 10 characters for your password.';
+  if (password.length < 8) return 'Use at least 8 characters for your password.';
   return null;
 }

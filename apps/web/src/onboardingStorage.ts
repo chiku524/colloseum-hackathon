@@ -1,4 +1,4 @@
-export const STRONGHOLD_ONBOARDING_KEY = 'stronghold-onboarding-v1';
+export const STRONGHOLD_ONBOARDING_KEY = 'web3stronghold-onboarding-v1';
 
 export type OnboardingPayloadV1 = {
   v: 1;
@@ -40,5 +40,5 @@ export function writeOnboarding(p: Omit<OnboardingPayloadV1, 'v'> & { v?: 1 }): 
 
 export function dispatchOnboardingApplied(detail: OnboardingPayloadV1): void {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('stronghold-onboarding-applied', { detail }));
+  window.dispatchEvent(new CustomEvent('web3stronghold-onboarding-applied', { detail }));
 }

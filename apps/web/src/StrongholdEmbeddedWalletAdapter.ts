@@ -10,7 +10,7 @@ import {
 } from '@solana/wallet-adapter-base';
 import { Keypair, PublicKey, type Transaction, type VersionedTransaction } from '@solana/web3.js';
 
-export const STRONGHOLD_EMBEDDED_WALLET_NAME = 'Stronghold (email wallet)' as WalletName<'Stronghold (email wallet)'>;
+export const STRONGHOLD_EMBEDDED_WALLET_NAME = 'web3stronghold (email wallet)' as WalletName<'web3stronghold (email wallet)'>;
 
 const STRONGHOLD_ICON =
   'data:image/svg+xml,' +

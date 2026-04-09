@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Check local env for Supabase + Stronghold web setup (no secrets printed).
+ * Check local env for Supabase + web3stronghold web setup (no secrets printed).
  */
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -31,7 +31,7 @@ const dbUrlPresent = Boolean(
 let ok = true;
 const lines = [];
 
-lines.push('=== Stronghold / Supabase setup check ===\n');
+lines.push('=== web3stronghold / Supabase setup check ===\n');
 
 lines.push(devLocal + (existsSync(devLocal) ? ' — found' : ' — missing (run: cd apps/web && vercel env pull .env.development.local)'));
 if (!existsSync(devLocal)) ok = false;

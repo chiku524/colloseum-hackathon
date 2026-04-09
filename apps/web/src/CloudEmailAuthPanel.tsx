@@ -2,6 +2,7 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import type { WalletName } from '@solana/wallet-adapter-base';
 import { Keypair } from '@solana/web3.js';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { BRAND_NAME } from './brand';
 import { validateNewPassword } from './embeddedWalletVault';
 import {
   buildKeybagPayload,
@@ -10,7 +11,12 @@ import {
   type SolanaKeybagRow,
   unlockKeypairFromKeybag,
 } from './keybag/cloudKeybagCrypto';
-import { fetchKeybagForUser, insertKeybag, updateKeybagPasswordWrap } from './keybag/cloudKeybagRepository';
+import {
+  fetchKeybagForUser,
+  insertKeybag,
+  isUniqueViolationError,
+  updateKeybagPasswordWrap,
+} from './keybag/cloudKeybagRepository';
 import { getSupabaseBrowserClient } from './supabase/client';
 import { STRONGHOLD_EMBEDDED_WALLET_NAME, type StrongholdEmbeddedWalletAdapter } from './StrongholdEmbeddedWalletAdapter';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -253,12 +259,38 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     }
     setBusyAction('create-keybag');
     try {
+      const existing = await fetchKeybagForUser(supabase, session.user.id);
+      if (existing) {
+        setKeybagRow(existing);
+        setPhase('unlock_keybag');
+        setInfoMsg(
+          'A wallet is already linked to this account. Unlock with your account password (the one you use to sign in).',
+        );
+        setPassword('');
+        return;
+      }
+
       const kp = Keypair.generate();
       const payload = await buildKeybagPayload(kp, password, mnemonicDraft);
       await insertKeybag(supabase, session.user.id, payload);
       await connectEmbedded(kp);
       setPassword('');
     } catch (e) {
+      if (isUniqueViolationError(e)) {
+        try {
+          const row = await fetchKeybagForUser(supabase, session.user.id);
+          if (row) {
+            setKeybagRow(row);
+            setPhase('unlock_keybag');
+            setInfoMsg('Your wallet was already saved. Unlock with your account password.');
+            setPassword('');
+            return;
+          }
+        } catch (fetchErr) {
+          setAuthErr(fetchErr instanceof Error ? fetchErr.message : String(fetchErr));
+          return;
+        }
+      }
       setAuthErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusyAction(null);
@@ -377,7 +409,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       <AuthAnimatedStep stepKey="create_keybag">
         <h3 className="auth-gate-h3">Save your recovery phrase</h3>
         <p className="muted small">
-          This phrase is the only way to recover your Solana wallet if you reset your password. Stronghold never sees it
+          This phrase is the only way to recover your Solana wallet if you reset your password. {BRAND_NAME} never sees it
           or your private key — only encrypted data is stored in your Supabase project.
         </p>
         <textarea className="auth-field-textarea auth-mnemonic-display" readOnly rows={3} value={mnemonicDraft} />
@@ -396,7 +428,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Encrypts your keybag (min. 10 characters)"
+            placeholder="Encrypts your keybag (min. 8 characters)"
           />
         </label>
         {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
@@ -612,7 +644,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
           autoComplete={emailTab === 'register' ? 'new-password' : 'current-password'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder={emailTab === 'register' ? 'At least 10 characters' : ''}
+          placeholder={emailTab === 'register' ? 'At least 8 characters' : ''}
         />
       </label>
 

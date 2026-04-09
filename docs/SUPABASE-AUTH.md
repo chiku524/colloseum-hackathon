@@ -1,6 +1,6 @@
 # Supabase email auth and cloud keybags
 
-Stronghold can link each **verified email user** to a **Solana signing key** you custody in the sense that **ciphertext** lives in your Supabase Postgres project. Plaintext keys are produced only in the browser after the user enters their **account password** or **recovery phrase**.
+**web3stronghold** can link each **verified email user** to a **Solana signing key** you custody in the sense that **ciphertext** lives in your Supabase Postgres project. Plaintext keys are produced only in the browser after the user enters their **account password** or **recovery phrase**.
 
 ## What you get
 
@@ -34,8 +34,10 @@ npm run dev
 | `npm run setup:supabase-open -- sql`  | SQL editor only.                                                                                                                                                                                                                                                                                            |
 | `npm run setup:supabase-open -- auth` | Auth URL configuration only.                                                                                                                                                                                                                                                                                |
 | `npm run setup:supabase-auth-urls`    | **PATCH**es `site_url` + `uri_allow_list` via [Supabase Management API](https://supabase.com/docs/reference/api/introduction). Needs `SUPABASE_ACCESS_TOKEN` ([account tokens](https://supabase.com/dashboard/account/tokens)). Optional: `SUPABASE_SITE_URL`, `SUPABASE_URI_ALLOW_LIST` (comma-separated). |
+| `npm run setup:supabase-smtp-resend` | **PATCH**es Auth **SMTP** for **Resend** (`smtp.resend.com`, sender env). Needs `SUPABASE_ACCESS_TOKEN` + `RESEND_API_KEY`. See `docs/SUPABASE-CUSTOM-SMTP.md`. |
 | `npm run setup:supabase:auth-bash`    | Same auth URL update via **bash** — prompts for the personal access token with `read -s` (Git Bash / macOS / Linux). |
 | `npm run setup:supabase:keybags-bash` | **bash** prompts for the **Postgres password**, then applies the migration on `db.<ref>.supabase.co:5432` via **`psql`** (Unix / WSL) or **`node` + `pg`** on **Git Bash / MSYS** (avoids MSYS DNS failures). |
+| `npm run supabase:mailpit` | Starts **standalone** Mailpit (`supabase/mailpit-compose.yml`) on **8025** / **1025**. For the **official** Docker stack, merge `supabase/docker-compose.self-host-mailpit.yml` — see `supabase/self-host/README.md`. |
 | `npm run setup:install-psql` | **Windows only** — runs `scripts/install-postgresql-client.ps1` (needs **PowerShell as Administrator** + [Chocolatey](https://chocolatey.org/install)). Installs the `psql` client globally via `choco install psql`. |
 
 Optional secrets file (gitignored): copy `.env.supabase.example` → `.env.supabase.local` for `SUPABASE_DB_URL` and/or `SUPABASE_ACCESS_TOKEN`. **`setup:supabase:keybags-bash` loads `SUPABASE_ACCESS_TOKEN` from that file into the shell** so Node sees it (pasting only the DB password is not enough on IPv4-only Windows).
@@ -61,6 +63,7 @@ Run **`npm run setup:post-keybags`** — it executes **`setup:check`** and print
 - **`getaddrinfo ENOTFOUND` / `ENETUNREACH` for `db.*.supabase.co` on Windows** — Direct DB hostnames are often **IPv6-only**. IPv4-only Windows cannot use them. **Fix:** (1) Set **`SUPABASE_ACCESS_TOKEN`** in **`.env.supabase.local`** (recommended) or paste when prompted; the script logs **`Management API pooler: …`** if the pooler endpoint could not build a URI (wrong token scope, empty JSON, etc.). It uses **`GET .../config/database/pooler`** and, if needed, builds **`postgres.<ref>` @ `db_host:5432`** from the API. Guessed **`aws-0-*` / `aws-1-*`** hostnames are fallbacks only. Fine-grained tokens need **`database_pooling_config_read`**. (2) Or set **`SUPABASE_DB_URL`** to the exact **Session mode** URI from **Supabase → Connect**. (3) Or run the SQL in **Supabase → SQL Editor**. (4) **`Tenant or user not found`** — wrong pooler host. **`password authentication failed for user "postgres"`** — the API template often uses user `postgres`; the script rewrites to **`postgres.<project_ref>`** for `*.pooler.supabase.com`. If it still fails, the **database password** is wrong (Settings → Database), not the PAT.
 - **`self-signed certificate in certificate chain`** on **`setup:apply-keybags`** — Often from a pooled/direct URL whose host still matches Supabase; the script retries with relaxed TLS or widens host matching. If it persists, paste the **Session** URI from the dashboard into **`SUPABASE_DB_URL`**.
 - **`permission denied for table solana_keybags`** (or insert/select fails after sign-in) — Run `002_solana_keybags_grants.sql` in the SQL Editor, or re-run `npm run setup:apply-keybags` so the `authenticated` role has `SELECT`/`INSERT`/`UPDATE` on the table.
+- **`duplicate key value violates unique constraint "solana_keybags_pkey"`** — A row for this user already exists (e.g. wallet creation succeeded once and the UI retried). The app should send you to **unlock**; if you still see the error, refresh after sign-in or check **Table Editor → `solana_keybags`** for your user.
 
 ## Setup
 
@@ -72,6 +75,20 @@ Run **`npm run setup:post-keybags`** — it executes **`setup:check`** and print
   - `VITE_PUBLIC_SUPABASE_URL` + `VITE_PUBLIC_SUPABASE_ANON_KEY` (common when using **Vercel → Storage → Supabase**)
   - `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (manual / docs shorthand)
 6. Deploy the web app with those variables on the **same Vercel project** as `apps/web` (or run `vercel env pull` locally for `apps/web`).
+
+### Branded auth emails (sender name and copy)
+
+**Hosted Supabase (typical for this app):** Auth email **already works** without Docker or Mailpit. Supabase’s servers send verification and reset messages whenever your project is active (you are not running email infrastructure 24/7 yourself).
+
+To use **your domain** and a friendly **From** name (e.g. **web3stronghold**), add **Custom SMTP**. **Recommended:** **Resend** + Supabase (no app code changes) — full checklist **`docs/SUPABASE-CUSTOM-SMTP.md`** (includes **Vercel / domain / aliases** notes). Supabase UI: enable SMTP under **Authentication → Email** (wording varies). Official: [Custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp).
+
+**Templates** — **Authentication → Email Templates** — edit subjects and bodies for **Confirm signup**, **Magic link**, **Reset password**, etc.
+
+Without custom SMTP, the display name is largely controlled by Supabase’s infrastructure.
+
+### Self-hosted email (Docker / Mailpit — optional)
+
+For **local CLI** (`supabase start`), Auth uses the built-in mail catcher; this repo adds **branded HTML templates** and dev-friendly URLs in `supabase/config.toml`. For **self-hosted Docker** Supabase, merge **`supabase/docker-compose.self-host-mailpit.yml`** with the official stack and set **`SMTP_*`** in `.env` — walkthrough **`supabase/self-host/README.md`**, overview **`docs/SUPABASE-SELF-HOSTED-EMAIL.md`**.
 
 **Security:** Never commit Postgres passwords, `SUPABASE_SERVICE_ROLE_KEY`, or `SUPABASE_SECRET_KEY` to git. The browser only needs **URL + anon key**; RLS protects your tables. If secrets were pasted into chat or a ticket, **rotate** them in Supabase (database password, JWT secret, API keys).
 
@@ -89,7 +106,7 @@ If both URL and anon key are unset (neither `VITE_PUBLIC_`* nor `VITE_SUPABASE_`
 
 ## You do not need Next.js or SvelteKit
 
-This repo’s dashboard is **Vite + React** (`apps/web`). Supabase Auth and `solana_keybags` are already wired there. Follow the **UI testing checklist** below instead of adding another framework.
+This repo’s **web3stronghold** dashboard is **Vite + React** (`apps/web`). Supabase Auth and `solana_keybags` are already wired there. Follow the **UI testing checklist** below instead of adding another framework.
 
 ## UI testing checklist
 
@@ -104,7 +121,7 @@ Prerequisites: env vars set — e.g. `cd apps/web && vercel env pull .env.develo
 ### B. Cloud email (Supabase)
 
 1. **Register**: Email tab → Register → use a real inbox you can open → confirm the Supabase email → **Sign in**.
-2. **Create wallet**: Save the **12-word phrase** (copy to a scratch file for testing), check the box, enter password (≥10 chars) → **Create wallet & continue** → finish team onboarding.
+2. **Create wallet**: Save the **12-word phrase** (copy to a scratch file for testing), check the box, enter password (≥8 chars) → **Create wallet & continue** → finish team onboarding.
 3. **Multi-device**: Open an incognito window (or another browser), sign in with the same email, enter password → **Unlock** → same pubkey as before (compare in onboarding or header).
 4. **Forgot password**: In Supabase dashboard you can use a second test user, or on sign-in click **Email me a reset link** → follow email → land on app → **Finish password reset**: new password + recovery phrase → should unlock the **same** wallet.
 5. **Data check**: In Supabase **Table Editor** → `solana_keybags` → one row per user; `pubkey` matches the in-app address.

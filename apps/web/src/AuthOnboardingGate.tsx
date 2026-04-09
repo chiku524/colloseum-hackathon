@@ -55,8 +55,8 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
       const d = (e as CustomEvent<OnboardingPayloadV1>).detail;
       if (d?.complete) setOnboardingDone(true);
     };
-    window.addEventListener('stronghold-onboarding-applied', onApplied);
-    return () => window.removeEventListener('stronghold-onboarding-applied', onApplied);
+    window.addEventListener('web3stronghold-onboarding-applied', onApplied);
+    return () => window.removeEventListener('web3stronghold-onboarding-applied', onApplied);
   }, []);
 
   useEffect(() => {
@@ -292,7 +292,7 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
                       autoComplete={emailTab === 'register' ? 'new-password' : 'current-password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder={emailTab === 'register' ? 'At least 10 characters' : ''}
+                      placeholder={emailTab === 'register' ? 'At least 8 characters' : ''}
                     />
                   </label>
 

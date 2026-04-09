@@ -235,8 +235,8 @@ export default function App() {
     const onApplied = (e: Event) => {
       apply((e as CustomEvent<OnboardingPayloadV1>).detail);
     };
-    window.addEventListener('stronghold-onboarding-applied', onApplied);
-    return () => window.removeEventListener('stronghold-onboarding-applied', onApplied);
+    window.addEventListener('web3stronghold-onboarding-applied', onApplied);
+    return () => window.removeEventListener('web3stronghold-onboarding-applied', onApplied);
   }, []);
   const [autoMode, setAutoMode] = useState('1');
   const [autoPaused, setAutoPaused] = useState(false);
@@ -1278,7 +1278,7 @@ export default function App() {
       setErr('Load your project first (Overview → Refresh data).');
       return;
     }
-    downloadTextFile(`stronghold-proposals-${onChain.onChainProjectId}.csv`, proposalsToCsv(proposals));
+    downloadTextFile(`web3stronghold-proposals-${onChain.onChainProjectId}.csv`, proposalsToCsv(proposals));
     pushToast('Payout list downloaded as CSV.');
   };
 
@@ -1304,7 +1304,7 @@ export default function App() {
       vaultBalance: onChain.vaultBalance,
       proposals,
     };
-    downloadJson(`stronghold-audit-${onChain.onChainProjectId}.json`, pkg);
+    downloadJson(`web3stronghold-audit-${onChain.onChainProjectId}.json`, pkg);
     pushToast('Audit file downloaded.');
   };
 

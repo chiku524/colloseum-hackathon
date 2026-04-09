@@ -1,0 +1,25 @@
+# =============================================================================
+# Mailpit overlay for the OFFICIAL Supabase Docker stack
+# https://github.com/supabase/supabase/tree/master/docker
+#
+# From the directory that contains the upstream docker-compose.yml:
+#   docker compose -f docker-compose.yml -f path/to/this/file up -d
+#
+# Or copy this file next to docker-compose.yml and run:
+#   docker compose -f docker-compose.yml -f docker-compose.self-host-mailpit.yml up -d
+#
+# Set SMTP in .env (see supabase/self-hosted-smtp.env.example), then restart auth:
+#   docker compose -f docker-compose.yml -f docker-compose.self-host-mailpit.yml restart auth
+#
+# Mailpit joins the stack default network so the auth container can resolve host "mailpit".
+# UI: http://localhost:${MAILPIT_HTTP_PORT:-8025}
+# =============================================================================
+
+services:
+  mailpit:
+    container_name: supabase-mailpit
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_HTTP_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"

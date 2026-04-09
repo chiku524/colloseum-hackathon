@@ -31,7 +31,7 @@ function Root() {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect={false} localStorageKey="stronghold-wallet-name">
+      <WalletProvider wallets={wallets} autoConnect={false} localStorageKey="web3stronghold-wallet-name">
         <WalletModalProvider>
           <AuthOnboardingGate embeddedAdapter={embeddedAdapter}>
             <App />

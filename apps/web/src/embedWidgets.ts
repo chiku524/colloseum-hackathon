@@ -1,5 +1,5 @@
 /**
- * URL builders and copy-paste snippets for embedding Stronghold (treasury status) in other apps.
+ * URL builders and copy-paste snippets for embedding web3stronghold (treasury status) in other apps.
  * See Widget Studio in the main app for interactive configuration.
  */
 
