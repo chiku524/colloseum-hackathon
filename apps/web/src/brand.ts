@@ -2,7 +2,7 @@
 export const BRAND_NAME = 'web3stronghold';
 
 /** Production site (Vercel). Swap when you add a custom domain. */
-export const SITE_CANONICAL_ORIGIN = 'https://web3stronghold.vercel.app';
+export const SITE_CANONICAL_ORIGIN = 'https://web3stronghold.app';
 
 export const SITE_CANONICAL_URL = `${SITE_CANONICAL_ORIGIN}/`;
 

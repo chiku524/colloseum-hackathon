@@ -3,6 +3,11 @@ import { getSupabaseAnonKey, getSupabaseUrl, isSupabaseEnvPresent } from './supa
 
 let browserClient: SupabaseClient | null = null;
 
+/** Drop the cached browser client so the next `getSupabaseBrowserClient()` builds a new instance (e.g. after clearing local auth storage). */
+export function resetSupabaseBrowserClient(): void {
+  browserClient = null;
+}
+
 export function isSupabaseConfigured(): boolean {
   return isSupabaseEnvPresent();
 }

@@ -1,7 +1,7 @@
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import type { WalletName } from '@solana/wallet-adapter-base';
 import { Keypair } from '@solana/web3.js';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BRAND_NAME } from './brand';
 import { validateNewPassword } from './embeddedWalletVault';
 import {
@@ -17,8 +17,13 @@ import {
   isUniqueViolationError,
   updateKeybagPasswordWrap,
 } from './keybag/cloudKeybagRepository';
-import { getSupabaseBrowserClient } from './supabase/client';
-import { authServiceUnavailableMessage, isAuthServiceUnavailableError } from './supabase/authErrors';
+import { getSupabaseBrowserClient, resetSupabaseBrowserClient } from './supabase/client';
+import {
+  authServiceUnavailableMessage,
+  clearSupabaseBrowserAuthStorage,
+  isAuthServiceUnavailableError,
+} from './supabase/authErrors';
+import { getSupabaseProjectRefFromUrl, getSupabaseUrl } from './supabase/supabaseEnv';
 import { STRONGHOLD_EMBEDDED_WALLET_NAME, type StrongholdEmbeddedWalletAdapter } from './StrongholdEmbeddedWalletAdapter';
 import { LoadingSpinner } from './LoadingSpinner';
 
@@ -55,7 +60,7 @@ type Phase =
   | 'password_recovery'
   | 'recovery_rewrap';
 
-/** Cap initial getSession (refresh) wait so a bad/stale token + 503 storm does not block the gate for tens of seconds. */
+/** If GoTrue never emits `onAuthStateChange` (stuck refresh / 503), recover without `signOut` (avoids lock fights). */
 const SESSION_INIT_TIMEOUT_MS = 12_000;
 
 function formatAuthFlowError(err: unknown): string {
@@ -63,8 +68,19 @@ function formatAuthFlowError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+function recoverFromStuckSupabaseAuth(setSupabaseEpoch: (u: (n: number) => number) => void): void {
+  const ref = getSupabaseProjectRefFromUrl(getSupabaseUrl());
+  if (ref) clearSupabaseBrowserAuthStorage(ref);
+  resetSupabaseBrowserClient();
+  setSupabaseEpoch((n) => n + 1);
+}
+
 export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconnect }: CloudEmailAuthPanelProps) {
-  const supabase = getSupabaseBrowserClient()!;
+  const [supabaseEpoch, setSupabaseEpoch] = useState(0);
+  const supabase = useMemo(() => {
+    resetSupabaseBrowserClient();
+    return getSupabaseBrowserClient()!;
+  }, [supabaseEpoch]);
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [session, setSession] = useState<Session | null>(null);
@@ -153,60 +169,30 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       }
     };
 
-    void (async () => {
-      let settled = false;
-
-      const timeoutId = window.setTimeout(async () => {
-        if (cancelled || settled) return;
-        settled = true;
-        await supabase.auth.signOut({ scope: 'local' });
-        if (cancelled) return;
-        setAuthErr(
-          'Sign-in is taking too long (often when Supabase Auth is slow or down). Your saved session was cleared — try signing in again, or check https://status.supabase.com',
-        );
-        setPhase('auth');
-      }, SESSION_INIT_TIMEOUT_MS);
-
-      try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        window.clearTimeout(timeoutId);
-        if (cancelled || settled) return;
-        settled = true;
-
-        if (sessionError && isAuthServiceUnavailableError(sessionError)) {
-          await supabase.auth.signOut({ scope: 'local' });
-          if (cancelled) return;
-          setAuthErr(authServiceUnavailableMessage());
-          setPhase('auth');
-          return;
-        }
-
-        const initial = sessionData.session;
-        await route(initial ?? null);
-      } catch (e) {
-        window.clearTimeout(timeoutId);
-        if (cancelled || settled) return;
-        settled = true;
-        if (isAuthServiceUnavailableError(e)) {
-          await supabase.auth.signOut({ scope: 'local' });
-          if (cancelled) return;
-          setAuthErr(authServiceUnavailableMessage());
-          setPhase('auth');
-          return;
-        }
-        setAuthErr(e instanceof Error ? e.message : String(e));
-        setPhase('auth');
-      }
-    })();
+    let authCallbackSeen = false;
+    const timeoutId = window.setTimeout(() => {
+      if (cancelled || authCallbackSeen) return;
+      recoverFromStuckSupabaseAuth(setSupabaseEpoch);
+      if (cancelled) return;
+      setAuthErr(
+        'Sign-in is taking too long (often when Supabase Auth is slow or down). Your saved session was cleared locally — try signing in again, or check https://status.supabase.com',
+      );
+      setPhase('auth');
+    }, SESSION_INIT_TIMEOUT_MS);
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, sess) => {
+      if (!authCallbackSeen) {
+        authCallbackSeen = true;
+        window.clearTimeout(timeoutId);
+      }
       void route(sess, event);
     });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, [embeddedAdapter, supabase]);

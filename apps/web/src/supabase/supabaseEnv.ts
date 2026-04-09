@@ -22,3 +22,14 @@ export function getSupabaseAnonKey(): string {
 export function isSupabaseEnvPresent(): boolean {
   return Boolean(getSupabaseUrl() && getSupabaseAnonKey());
 }
+
+/** Project ref from hosted URL `https://<ref>.supabase.co` (local/custom URLs return null). */
+export function getSupabaseProjectRefFromUrl(url: string): string | null {
+  try {
+    const host = new URL(url).hostname;
+    const m = /^([a-z0-9]+)\.supabase\.co$/i.exec(host);
+    return m?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
