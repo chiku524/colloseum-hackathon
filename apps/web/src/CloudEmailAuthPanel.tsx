@@ -118,12 +118,13 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
 
   const connectEmbedded = useCallback(
     async (kp: Keypair) => {
-      embeddedAdapter.setUnlockedKeypair(kp);
       try {
         await disconnect();
       } catch {
         /* noop */
       }
+      // Must run after disconnect: embedded adapter.disconnect() clears the unlocked keypair.
+      embeddedAdapter.setUnlockedKeypair(kp);
       await select(STRONGHOLD_EMBEDDED_WALLET_NAME);
       await connect();
     },
@@ -477,33 +478,41 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
     const resendBlocked = resendCooldownSec > 0 || busy;
     return (
       <AuthAnimatedStep stepKey="verify_email">
-        <p className="auth-gate-lead">
-          Confirm your email using the link we sent. After that, sign in with the same address and password.
-        </p>
-        {verifyEmail ? (
-          <p className="muted small">
-            Sent to <strong>{verifyEmail}</strong>. If nothing arrives, check spam and that Resend/your SMTP sender domain is verified.
-          </p>
-        ) : null}
-        {infoMsg ? <p className="muted small">{infoMsg}</p> : null}
-        {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
-        <button
-          type="button"
-          className={`auth-gate-submit${busyAction === 'resend-verify' ? ' auth-gate-submit--with-spinner' : ''}`}
-          disabled={resendBlocked || !verifyEmail.length}
-          onClick={() => void onResendVerification()}
+        <form
+          className="auth-gate-email-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (resendBlocked || !verifyEmail.length) return;
+            void onResendVerification();
+          }}
         >
-          {busyAction === 'resend-verify' ? (
-            <>
-              <LoadingSpinner size="sm" label="Sending" />
-              <span>Sending…</span>
-            </>
-          ) : resendCooldownSec > 0 ? (
-            `Resend email (${resendCooldownSec}s)`
-          ) : (
-            'Resend confirmation email'
-          )}
-        </button>
+          <p className="auth-gate-lead">
+            Confirm your email using the link we sent. After that, sign in with the same address and password.
+          </p>
+          {verifyEmail ? (
+            <p className="muted small">
+              Sent to <strong>{verifyEmail}</strong>. If nothing arrives, check spam and that Resend/your SMTP sender domain is verified.
+            </p>
+          ) : null}
+          {infoMsg ? <p className="muted small">{infoMsg}</p> : null}
+          {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
+          <button
+            type="submit"
+            className={`auth-gate-submit${busyAction === 'resend-verify' ? ' auth-gate-submit--with-spinner' : ''}`}
+            disabled={resendBlocked || !verifyEmail.length}
+          >
+            {busyAction === 'resend-verify' ? (
+              <>
+                <LoadingSpinner size="sm" label="Sending" />
+                <span>Sending…</span>
+              </>
+            ) : resendCooldownSec > 0 ? (
+              `Resend email (${resendCooldownSec}s)`
+            ) : (
+              'Resend confirmation email'
+            )}
+          </button>
+        </form>
         <button type="button" className="ghost auth-gate-submit" onClick={() => void onSignOut()}>
           Sign out / use a different email
         </button>
@@ -514,46 +523,54 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   if (phase === 'create_keybag') {
     return (
       <AuthAnimatedStep stepKey="create_keybag">
-        <h3 className="auth-gate-h3">Save your recovery phrase</h3>
-        <p className="muted small">
-          This phrase is the only way to recover your Solana wallet if you reset your password. {BRAND_NAME} never sees it
-          or your private key — only encrypted data is stored in your Supabase project.
-        </p>
-        <textarea className="auth-field-textarea auth-mnemonic-display" readOnly rows={3} value={mnemonicDraft} />
-        <label className="auth-check">
-          <input
-            type="checkbox"
-            checked={savedMnemonicConfirm}
-            onChange={(e) => setSavedMnemonicConfirm(e.target.checked)}
-          />
-          <span>I wrote this phrase down in a safe place.</span>
-        </label>
-        <label className="auth-field">
-          <span>Account password</span>
-          <input
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Encrypts your keybag (min. 8 characters)"
-          />
-        </label>
-        {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
-        <button
-          type="button"
-          className={`auth-gate-submit${busyAction === 'create-keybag' ? ' auth-gate-submit--with-spinner' : ''}`}
-          disabled={busy}
-          onClick={() => void onCreateKeybag()}
+        <form
+          className="auth-gate-email-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (busy) return;
+            void onCreateKeybag();
+          }}
         >
-          {busyAction === 'create-keybag' ? (
-            <>
-              <LoadingSpinner size="sm" label="Creating wallet" />
-              <span>Creating wallet…</span>
-            </>
-          ) : (
-            'Create wallet & continue'
-          )}
-        </button>
+          <h3 className="auth-gate-h3">Save your recovery phrase</h3>
+          <p className="muted small">
+            This phrase is the only way to recover your Solana wallet if you reset your password. {BRAND_NAME} never sees it
+            or your private key — only encrypted data is stored in your Supabase project.
+          </p>
+          <textarea className="auth-field-textarea auth-mnemonic-display" readOnly rows={3} value={mnemonicDraft} />
+          <label className="auth-check">
+            <input
+              type="checkbox"
+              checked={savedMnemonicConfirm}
+              onChange={(e) => setSavedMnemonicConfirm(e.target.checked)}
+            />
+            <span>I wrote this phrase down in a safe place.</span>
+          </label>
+          <label className="auth-field">
+            <span>Account password</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Encrypts your keybag (min. 8 characters)"
+            />
+          </label>
+          {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
+          <button
+            type="submit"
+            className={`auth-gate-submit${busyAction === 'create-keybag' ? ' auth-gate-submit--with-spinner' : ''}`}
+            disabled={busy}
+          >
+            {busyAction === 'create-keybag' ? (
+              <>
+                <LoadingSpinner size="sm" label="Creating wallet" />
+                <span>Creating wallet…</span>
+              </>
+            ) : (
+              'Create wallet & continue'
+            )}
+          </button>
+        </form>
         <button type="button" className="ghost auth-gate-back" onClick={() => void onSignOut()}>
           Sign out
         </button>
@@ -564,33 +581,41 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   if (phase === 'unlock_keybag') {
     return (
       <AuthAnimatedStep stepKey="unlock_keybag">
-        <p className="muted small">Signed in as {session?.user.email}. Enter your password to unlock your email wallet.</p>
-        <label className="auth-field">
-          <span>Password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
-        {infoMsg ? <p className="muted small">{infoMsg}</p> : null}
-        <button
-          type="button"
-          className={`auth-gate-submit${busyAction === 'unlock' ? ' auth-gate-submit--with-spinner' : ''}`}
-          disabled={busy}
-          onClick={() => void onUnlockKeybag()}
+        <form
+          className="auth-gate-email-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (busy) return;
+            void onUnlockKeybag();
+          }}
         >
-          {busyAction === 'unlock' ? (
-            <>
-              <LoadingSpinner size="sm" label="Unlocking wallet" />
-              <span>Unlocking…</span>
-            </>
-          ) : (
-            'Unlock email wallet'
-          )}
-        </button>
+          <p className="muted small">Signed in as {session?.user.email}. Enter your password to unlock your email wallet.</p>
+          <label className="auth-field">
+            <span>Password</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
+          {infoMsg ? <p className="muted small">{infoMsg}</p> : null}
+          <button
+            type="submit"
+            className={`auth-gate-submit${busyAction === 'unlock' ? ' auth-gate-submit--with-spinner' : ''}`}
+            disabled={busy}
+          >
+            {busyAction === 'unlock' ? (
+              <>
+                <LoadingSpinner size="sm" label="Unlocking wallet" />
+                <span>Unlocking…</span>
+              </>
+            ) : (
+              'Unlock email wallet'
+            )}
+          </button>
+        </form>
         <button type="button" className="ghost auth-gate-back" onClick={() => void onForgotPassword()}>
           Forgot password (email link)
         </button>
@@ -615,50 +640,58 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   if (phase === 'password_recovery') {
     return (
       <AuthAnimatedStep stepKey="password_recovery">
-        <h3 className="auth-gate-h3">Finish password reset</h3>
-        <p className="muted small">
-          Set a new account password and enter your recovery phrase so your Solana key can be re-encrypted. If you have
-          not created a wallet yet, you will be asked to do that next.
-        </p>
-        <label className="auth-field">
-          <span>New password</span>
-          <input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-        </label>
-        <label className="auth-field">
-          <span>Confirm new password</span>
-          <input
-            type="password"
-            autoComplete="new-password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
-        </label>
-        <label className="auth-field">
-          <span>Recovery phrase</span>
-          <textarea
-            className="auth-field-textarea"
-            rows={3}
-            value={recoveryInput}
-            onChange={(e) => setRecoveryInput(e.target.value)}
-            placeholder="12 words, in order"
-          />
-        </label>
-        {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
-        <button
-          type="button"
-          className={`auth-gate-submit${busyAction === 'password-recovery' ? ' auth-gate-submit--with-spinner' : ''}`}
-          disabled={busy}
-          onClick={() => void onPasswordRecoveryComplete()}
+        <form
+          className="auth-gate-email-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (busy) return;
+            void onPasswordRecoveryComplete();
+          }}
         >
-          {busyAction === 'password-recovery' ? (
-            <>
-              <LoadingSpinner size="sm" label="Saving" />
-              <span>Saving…</span>
-            </>
-          ) : (
-            'Update password & restore wallet'
-          )}
-        </button>
+          <h3 className="auth-gate-h3">Finish password reset</h3>
+          <p className="muted small">
+            Set a new account password and enter your recovery phrase so your Solana key can be re-encrypted. If you have
+            not created a wallet yet, you will be asked to do that next.
+          </p>
+          <label className="auth-field">
+            <span>New password</span>
+            <input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          </label>
+          <label className="auth-field">
+            <span>Confirm new password</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          </label>
+          <label className="auth-field">
+            <span>Recovery phrase</span>
+            <textarea
+              className="auth-field-textarea"
+              rows={3}
+              value={recoveryInput}
+              onChange={(e) => setRecoveryInput(e.target.value)}
+              placeholder="12 words, in order"
+            />
+          </label>
+          {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
+          <button
+            type="submit"
+            className={`auth-gate-submit${busyAction === 'password-recovery' ? ' auth-gate-submit--with-spinner' : ''}`}
+            disabled={busy}
+          >
+            {busyAction === 'password-recovery' ? (
+              <>
+                <LoadingSpinner size="sm" label="Saving" />
+                <span>Saving…</span>
+              </>
+            ) : (
+              'Update password & restore wallet'
+            )}
+          </button>
+        </form>
       </AuthAnimatedStep>
     );
   }
@@ -666,45 +699,53 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   if (phase === 'recovery_rewrap') {
     return (
       <AuthAnimatedStep stepKey="recovery_rewrap">
-        <h3 className="auth-gate-h3">Restore with recovery phrase</h3>
-        <p className="muted small">
-          Use this if your password unlock fails but you still know your account password. Your phrase re-wraps the same
-          Solana key with your current password.
-        </p>
-        <label className="auth-field">
-          <span>Recovery phrase</span>
-          <textarea
-            className="auth-field-textarea"
-            rows={3}
-            value={recoveryInput}
-            onChange={(e) => setRecoveryInput(e.target.value)}
-          />
-        </label>
-        <label className="auth-field">
-          <span>Current account password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
-        <button
-          type="button"
-          className={`auth-gate-submit${busyAction === 'recovery-rewrap' ? ' auth-gate-submit--with-spinner' : ''}`}
-          disabled={busy}
-          onClick={() => void onRecoveryRewrapOnly()}
+        <form
+          className="auth-gate-email-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (busy) return;
+            void onRecoveryRewrapOnly();
+          }}
         >
-          {busyAction === 'recovery-rewrap' ? (
-            <>
-              <LoadingSpinner size="sm" label="Restoring wallet" />
-              <span>Restoring…</span>
-            </>
-          ) : (
-            'Restore wallet'
-          )}
-        </button>
+          <h3 className="auth-gate-h3">Restore with recovery phrase</h3>
+          <p className="muted small">
+            Use this if your password unlock fails but you still know your account password. Your phrase re-wraps the same
+            Solana key with your current password.
+          </p>
+          <label className="auth-field">
+            <span>Recovery phrase</span>
+            <textarea
+              className="auth-field-textarea"
+              rows={3}
+              value={recoveryInput}
+              onChange={(e) => setRecoveryInput(e.target.value)}
+            />
+          </label>
+          <label className="auth-field">
+            <span>Current account password</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
+          <button
+            type="submit"
+            className={`auth-gate-submit${busyAction === 'recovery-rewrap' ? ' auth-gate-submit--with-spinner' : ''}`}
+            disabled={busy}
+          >
+            {busyAction === 'recovery-rewrap' ? (
+              <>
+                <LoadingSpinner size="sm" label="Restoring wallet" />
+                <span>Restoring…</span>
+              </>
+            ) : (
+              'Restore wallet'
+            )}
+          </button>
+        </form>
         <button type="button" className="ghost auth-gate-back" onClick={() => setPhase('unlock_keybag')}>
           Back
         </button>
@@ -715,56 +756,63 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
   /* phase === 'auth' */
   return (
     <AuthAnimatedStep stepKey={`auth-${emailTab}`}>
-      <p className="muted small">
-        Email accounts use Supabase Auth (verification + password reset). Your Solana key is encrypted in the browser and
-        only ciphertext is stored in your database.
-      </p>
+      <form
+        className="auth-gate-email-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (busy) return;
+          if (emailTab === 'sign-in') void onSignIn();
+          else void onSignUp();
+        }}
+      >
+        <p className="muted small">
+          Email accounts use Supabase Auth (verification + password reset). Your Solana key is encrypted in the browser and
+          only ciphertext is stored in your database.
+        </p>
 
-      <div className="auth-gate-email-tabs">
-        <button
-          type="button"
-          className={emailTab === 'sign-in' ? 'auth-link auth-link--active' : 'auth-link'}
-          onClick={() => setEmailTab('sign-in')}
-        >
-          Sign in
-        </button>
-        <span className="muted" aria-hidden>
-          ·
-        </span>
-        <button
-          type="button"
-          className={emailTab === 'register' ? 'auth-link auth-link--active' : 'auth-link'}
-          onClick={() => setEmailTab('register')}
-        >
-          Register
-        </button>
-      </div>
-
-      <label className="auth-field">
-        <span>Email</span>
-        <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@team.xyz" />
-      </label>
-      <label className="auth-field">
-        <span>Password</span>
-        <input
-          type="password"
-          autoComplete={emailTab === 'register' ? 'new-password' : 'current-password'}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder={emailTab === 'register' ? 'At least 8 characters' : ''}
-        />
-      </label>
-
-      {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
-      {infoMsg ? <p className="muted small">{infoMsg}</p> : null}
-
-      {emailTab === 'sign-in' ? (
-        <>
+        <div className="auth-gate-email-tabs">
           <button
             type="button"
+            className={emailTab === 'sign-in' ? 'auth-link auth-link--active' : 'auth-link'}
+            onClick={() => setEmailTab('sign-in')}
+          >
+            Sign in
+          </button>
+          <span className="muted" aria-hidden>
+            ·
+          </span>
+          <button
+            type="button"
+            className={emailTab === 'register' ? 'auth-link auth-link--active' : 'auth-link'}
+            onClick={() => setEmailTab('register')}
+          >
+            Register
+          </button>
+        </div>
+
+        <label className="auth-field">
+          <span>Email</span>
+          <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@team.xyz" />
+        </label>
+        <label className="auth-field">
+          <span>Password</span>
+          <input
+            type="password"
+            autoComplete={emailTab === 'register' ? 'new-password' : 'current-password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={emailTab === 'register' ? 'At least 8 characters' : ''}
+          />
+        </label>
+
+        {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
+        {infoMsg ? <p className="muted small">{infoMsg}</p> : null}
+
+        {emailTab === 'sign-in' ? (
+          <button
+            type="submit"
             className={`auth-gate-submit${busyAction === 'sign-in' ? ' auth-gate-submit--with-spinner' : ''}`}
             disabled={busy}
-            onClick={() => void onSignIn()}
           >
             {busyAction === 'sign-in' ? (
               <>
@@ -775,39 +823,40 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
               'Sign in'
             )}
           </button>
+        ) : (
           <button
-            type="button"
-            className={`ghost auth-gate-back${busyAction === 'forgot' ? ' auth-gate-submit--with-spinner' : ''}`}
+            type="submit"
+            className={`auth-gate-submit${busyAction === 'sign-up' ? ' auth-gate-submit--with-spinner' : ''}`}
             disabled={busy}
-            onClick={() => void onForgotPassword()}
           >
-            {busyAction === 'forgot' ? (
+            {busyAction === 'sign-up' ? (
               <>
-                <LoadingSpinner size="sm" label="Sending reset email" />
-                <span>Sending…</span>
+                <LoadingSpinner size="sm" label="Creating account" />
+                <span>Creating account…</span>
               </>
             ) : (
-              'Email me a reset link'
+              'Register & verify email'
             )}
           </button>
-        </>
-      ) : (
+        )}
+      </form>
+      {emailTab === 'sign-in' ? (
         <button
           type="button"
-          className={`auth-gate-submit${busyAction === 'sign-up' ? ' auth-gate-submit--with-spinner' : ''}`}
+          className={`ghost auth-gate-back${busyAction === 'forgot' ? ' auth-gate-submit--with-spinner' : ''}`}
           disabled={busy}
-          onClick={() => void onSignUp()}
+          onClick={() => void onForgotPassword()}
         >
-          {busyAction === 'sign-up' ? (
+          {busyAction === 'forgot' ? (
             <>
-              <LoadingSpinner size="sm" label="Creating account" />
-              <span>Creating account…</span>
+              <LoadingSpinner size="sm" label="Sending reset email" />
+              <span>Sending…</span>
             </>
           ) : (
-            'Register & verify email'
+            'Email me a reset link'
           )}
         </button>
-      )}
+      ) : null}
     </AuthAnimatedStep>
   );
 }

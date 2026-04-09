@@ -2250,6 +2250,16 @@ a:focus-visible {
   gap: 0.75rem;
 }
 
+.auth-gate-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  width: 100%;
+  border: none;
+  padding: 0;
+}
+
 .auth-gate-email-tabs {
   display: flex;
   align-items: center;

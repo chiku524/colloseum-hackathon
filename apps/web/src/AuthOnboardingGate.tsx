@@ -73,12 +73,12 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
     setAuthBusy(true);
     try {
       const kp = await unlockVault(email, password);
-      embeddedAdapter.setUnlockedKeypair(kp);
       try {
         await disconnect();
       } catch {
         /* noop if nothing connected */
       }
+      embeddedAdapter.setUnlockedKeypair(kp);
       await select(STRONGHOLD_EMBEDDED_WALLET_NAME);
       await connect();
       setPassword('');
@@ -103,12 +103,12 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
     setAuthBusy(true);
     try {
       const kp = await createVault(email, password);
-      embeddedAdapter.setUnlockedKeypair(kp);
       try {
         await disconnect();
       } catch {
         /* noop */
       }
+      embeddedAdapter.setUnlockedKeypair(kp);
       await select(STRONGHOLD_EMBEDDED_WALLET_NAME);
       await connect();
       setPassword('');
@@ -242,9 +242,15 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
               ) : isSupabaseConfigured() ? (
                 <CloudEmailAuthPanel
                   embeddedAdapter={embeddedAdapter}
-                  select={(name) => Promise.resolve(select(name))}
-                  connect={() => Promise.resolve(connect())}
-                  disconnect={() => Promise.resolve(disconnect())}
+                  select={async (name) => {
+                    await Promise.resolve(select(name));
+                  }}
+                  connect={async () => {
+                    await Promise.resolve(connect());
+                  }}
+                  disconnect={async () => {
+                    await Promise.resolve(disconnect());
+                  }}
                 />
               ) : (
                 <div key="embedded-email" className="auth-gate-email auth-flow-step-enter">
@@ -255,82 +261,82 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
                     </p>
                   ) : null}
 
-                  <div className="auth-gate-email-tabs">
-                    <button
-                      type="button"
-                      className={emailTab === 'sign-in' ? 'auth-link auth-link--active' : 'auth-link'}
-                      onClick={() => setEmailTab('sign-in')}
-                    >
-                      Sign in
-                    </button>
-                    <span className="muted" aria-hidden>
-                      ·
-                    </span>
-                    <button
-                      type="button"
-                      className={emailTab === 'register' ? 'auth-link auth-link--active' : 'auth-link'}
-                      onClick={() => setEmailTab('register')}
-                    >
-                      Register
-                    </button>
-                  </div>
+                  <form
+                    className="auth-gate-email-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (authBusy) return;
+                      if (emailTab === 'sign-in') void onUnlockEmbedded();
+                      else void onRegisterEmbedded();
+                    }}
+                  >
+                    <div className="auth-gate-email-tabs">
+                      <button
+                        type="button"
+                        className={emailTab === 'sign-in' ? 'auth-link auth-link--active' : 'auth-link'}
+                        onClick={() => setEmailTab('sign-in')}
+                      >
+                        Sign in
+                      </button>
+                      <span className="muted" aria-hidden>
+                        ·
+                      </span>
+                      <button
+                        type="button"
+                        className={emailTab === 'register' ? 'auth-link auth-link--active' : 'auth-link'}
+                        onClick={() => setEmailTab('register')}
+                      >
+                        Register
+                      </button>
+                    </div>
 
-                  <label className="auth-field">
-                    <span>Email</span>
-                    <input
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@team.xyz"
-                    />
-                  </label>
-                  <label className="auth-field">
-                    <span>Password</span>
-                    <input
-                      type="password"
-                      autoComplete={emailTab === 'register' ? 'new-password' : 'current-password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={emailTab === 'register' ? 'At least 8 characters' : ''}
-                    />
-                  </label>
+                    <label className="auth-field">
+                      <span>Email</span>
+                      <input
+                        type="email"
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@team.xyz"
+                      />
+                    </label>
+                    <label className="auth-field">
+                      <span>Password</span>
+                      <input
+                        type="password"
+                        autoComplete={emailTab === 'register' ? 'new-password' : 'current-password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder={emailTab === 'register' ? 'At least 8 characters' : ''}
+                      />
+                    </label>
 
-                  {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
+                    {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
 
-                  {emailTab === 'sign-in' ? (
-                    <button
-                      type="button"
-                      className={`auth-gate-submit${authBusy ? ' auth-gate-submit--with-spinner' : ''}`}
-                      disabled={authBusy}
-                      onClick={() => void onUnlockEmbedded()}
-                    >
-                      {authBusy ? (
-                        <>
-                          <LoadingSpinner size="sm" label="Unlocking wallet" />
-                          <span>Unlocking…</span>
-                        </>
-                      ) : (
-                        'Unlock email wallet'
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className={`auth-gate-submit${authBusy ? ' auth-gate-submit--with-spinner' : ''}`}
-                      disabled={authBusy}
-                      onClick={() => void onRegisterEmbedded()}
-                    >
-                      {authBusy ? (
-                        <>
-                          <LoadingSpinner size="sm" label="Creating wallet" />
-                          <span>Creating…</span>
-                        </>
-                      ) : (
-                        'Create email wallet & continue'
-                      )}
-                    </button>
-                  )}
+                    {emailTab === 'sign-in' ? (
+                      <button type="submit" className={`auth-gate-submit${authBusy ? ' auth-gate-submit--with-spinner' : ''}`} disabled={authBusy}>
+                        {authBusy ? (
+                          <>
+                            <LoadingSpinner size="sm" label="Unlocking wallet" />
+                            <span>Unlocking…</span>
+                          </>
+                        ) : (
+                          'Unlock email wallet'
+                        )}
+                      </button>
+                    ) : (
+                      <button type="submit" className={`auth-gate-submit${authBusy ? ' auth-gate-submit--with-spinner' : ''}`} disabled={authBusy}>
+                        {authBusy ? (
+                          <>
+                            <LoadingSpinner size="sm" label="Creating wallet" />
+                            <span>Creating…</span>
+                          </>
+                        ) : (
+                          'Create email wallet & continue'
+                        )}
+                      </button>
+                    )}
+                  </form>
                 </div>
               )}
             </div>
