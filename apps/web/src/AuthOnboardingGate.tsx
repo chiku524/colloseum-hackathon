@@ -34,7 +34,7 @@ type Props = {
 
 export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
   const wallet = useWallet();
-  const { publicKey, select, connect, disconnect } = wallet;
+  const { publicKey, select, disconnect } = wallet;
 
   const [onboardingDone, setOnboardingDone] = useState(() => readOnboarding()?.complete ?? false);
   const [authMode, setAuthMode] = useState<'wallet' | 'email'>(() => {
@@ -74,7 +74,6 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
       await connectUnlockedEmbeddedWallet({
         disconnect,
         select,
-        connect,
         embeddedAdapter,
         keypair: kp,
       });
@@ -84,7 +83,7 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
     } finally {
       setAuthBusy(false);
     }
-  }, [connect, disconnect, email, embeddedAdapter, password, select]);
+  }, [disconnect, email, embeddedAdapter, password, select]);
 
   const onRegisterEmbedded = useCallback(async () => {
     setAuthErr(null);
@@ -103,7 +102,6 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
       await connectUnlockedEmbeddedWallet({
         disconnect,
         select,
-        connect,
         embeddedAdapter,
         keypair: kp,
       });
@@ -113,7 +111,7 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
     } finally {
       setAuthBusy(false);
     }
-  }, [connect, disconnect, email, embeddedAdapter, password, select]);
+  }, [disconnect, email, embeddedAdapter, password, select]);
 
   const [projName, setProjName] = useState('My treasury');
   const [projId, setProjId] = useState('0');
@@ -236,7 +234,7 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
                   </p>
                 </div>
               ) : isSupabaseConfigured() ? (
-                <CloudEmailAuthPanel embeddedAdapter={embeddedAdapter} select={select} connect={connect} disconnect={disconnect} />
+                <CloudEmailAuthPanel embeddedAdapter={embeddedAdapter} select={select} disconnect={disconnect} />
               ) : (
                 <div key="embedded-email" className="auth-gate-email auth-flow-step-enter">
                   {showVaultHint ? (

@@ -51,7 +51,6 @@ export type CloudEmailAuthPanelProps = {
   embeddedAdapter: StrongholdEmbeddedWalletAdapter;
   /** Must be synchronous (WalletProvider updates `wallet` on next render). */
   select: (walletName: WalletName) => void;
-  connect: () => Promise<void>;
   disconnect: () => Promise<void>;
 };
 
@@ -79,7 +78,7 @@ function recoverFromStuckSupabaseAuth(setSupabaseEpoch: (u: (n: number) => numbe
   setSupabaseEpoch((n) => n + 1);
 }
 
-export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconnect }: CloudEmailAuthPanelProps) {
+export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: CloudEmailAuthPanelProps) {
   const [supabaseEpoch, setSupabaseEpoch] = useState(0);
   const supabase = useMemo(() => {
     resetSupabaseBrowserClient();
@@ -123,12 +122,11 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, connect, disconne
       await connectUnlockedEmbeddedWallet({
         disconnect,
         select,
-        connect,
         embeddedAdapter,
         keypair: kp,
       });
     },
-    [connect, disconnect, embeddedAdapter, select],
+    [disconnect, embeddedAdapter, select],
   );
 
   useEffect(() => {
