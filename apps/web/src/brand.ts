@@ -7,7 +7,7 @@ export const SITE_CANONICAL_ORIGIN = 'https://web3stronghold.app';
 export const SITE_CANONICAL_URL = `${SITE_CANONICAL_ORIGIN}/`;
 
 export const BRAND_DESCRIPTION =
-  'web3stronghold: secure team escrow on Solana — policy templates, multi-approver releases, artifacts, and disputes. A creator treasury you can lock down, govern, and audit.';
+  'web3stronghold: secure team escrow on Solana — policy templates, multi-approver releases, artifacts, and disputes. Lock down, govern, and audit your creator treasury.';
 
 export const BRAND_TAGLINE =
   'Secure team escrow vault — policy templates, multi-approver releases, artifacts, and disputes — on Solana.';

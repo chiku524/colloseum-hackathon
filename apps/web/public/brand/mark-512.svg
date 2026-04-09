@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="web3stronghold mark">
+  <defs>
+    <linearGradient id="m512-bg" x1="64" y1="32" x2="480" y2="496" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3d7fd4" />
+      <stop offset="0.5" stop-color="#2d6bb8" />
+      <stop offset="1" stop-color="#15365c" />
+    </linearGradient>
+    <filter id="m512-glow" x="-45%" y="-45%" width="190%" height="190%">
+      <feGaussianBlur stdDeviation="6" result="b" />
+      <feMerge>
+        <feMergeNode in="b" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="115" fill="url(#m512-bg)" />
+  <rect
+    x="102"
+    y="83"
+    width="308"
+    height="346"
+    rx="58"
+    fill="rgba(4, 12, 24, 0.55)"
+    stroke="rgba(255,255,255,0.14)"
+    stroke-width="11"
+  />
+  <circle cx="141" cy="134" r="12" fill="rgba(255,255,255,0.22)" />
+  <circle cx="141" cy="256" r="12" fill="rgba(255,255,255,0.22)" />
+  <circle cx="141" cy="378" r="12" fill="rgba(255,255,255,0.22)" />
+  <circle cx="371" cy="134" r="12" fill="rgba(255,255,255,0.22)" />
+  <circle cx="371" cy="256" r="12" fill="rgba(255,255,255,0.22)" />
+  <circle cx="371" cy="378" r="12" fill="rgba(255,255,255,0.22)" />
+  <path
+    d="M160 211h192M160 256h192M160 301h192"
+    stroke="rgba(0,0,0,0.5)"
+    stroke-width="17"
+    stroke-linecap="round"
+  />
+  <path
+    d="M160 211h192M160 256h192M160 301h192"
+    stroke="rgba(255,255,255,0.1)"
+    stroke-width="6"
+    stroke-linecap="round"
+    transform="translate(-3 -3)"
+  />
+  <circle
+    cx="256"
+    cy="256"
+    r="61"
+    stroke="rgba(255,255,255,0.28)"
+    stroke-width="13"
+    fill="rgba(0,0,0,0.2)"
+  />
+  <circle cx="256" cy="256" r="27" stroke="rgba(255,255,255,0.14)" stroke-width="7" fill="none" />
+  <path
+    d="M297 256h33"
+    stroke="rgba(255,255,255,0.3)"
+    stroke-width="14"
+    stroke-linecap="round"
+  />
+  <circle cx="390" cy="378" r="38" fill="#5ee0c8" fill-opacity="0.95" filter="url(#m512-glow)" />
+  <circle cx="390" cy="378" r="15" fill="#e8fffa" fill-opacity="0.55" />
+</svg>
