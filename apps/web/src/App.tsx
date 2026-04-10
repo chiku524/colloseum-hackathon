@@ -37,6 +37,8 @@ import {
   proposalsToCsv,
 } from './auditExport';
 import { mergeSplitsIntoPolicy } from './csvPolicy';
+import { DashboardTour } from './DashboardTour';
+import { readDashboardTour, writeDashboardTour } from './dashboardTourStorage';
 import { readOnboarding, type OnboardingPayloadV1 } from './onboardingStorage';
 import { ensureWalletAta, recipientAtaForMint } from './splUtil';
 import { inferClusterLabel } from './rpcCluster';
@@ -200,6 +202,15 @@ export default function App() {
   const [csvText, setCsvText] = useState('');
   const [showAdvancedPolicy, setShowAdvancedPolicy] = useState(false);
   const [tab, setTab] = useState<'overview' | 'treasury' | 'setup' | 'policy' | 'ledger' | 'widgets'>('overview');
+  const [dashboardTourOpen, setDashboardTourOpen] = useState(false);
+  const [quickPathDismissed, setQuickPathDismissed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem('web3stronghold-quick-path-dismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const [treasuryVisibility, setTreasuryVisibility] = useState<'private' | 'public'>(() => {
     if (typeof window === 'undefined') return 'private';
@@ -238,6 +249,37 @@ export default function App() {
     window.addEventListener('web3stronghold-onboarding-applied', onApplied);
     return () => window.removeEventListener('web3stronghold-onboarding-applied', onApplied);
   }, []);
+
+  useEffect(() => {
+    if (!wallet.publicKey) return;
+    if (readDashboardTour()?.completed) return;
+    const id = window.setTimeout(() => setDashboardTourOpen(true), 450);
+    return () => window.clearTimeout(id);
+  }, [wallet.publicKey]);
+
+  const closeDashboardTour = useCallback(() => {
+    writeDashboardTour({ completed: true });
+    setDashboardTourOpen(false);
+  }, []);
+
+  const dismissQuickPath = useCallback(() => {
+    setQuickPathDismissed(true);
+    try {
+      window.localStorage.setItem('web3stronghold-quick-path-dismissed', '1');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const showQuickPath = useCallback(() => {
+    setQuickPathDismissed(false);
+    try {
+      window.localStorage.removeItem('web3stronghold-quick-path-dismissed');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const [autoMode, setAutoMode] = useState('1');
   const [autoPaused, setAutoPaused] = useState(false);
   const [autoInterval, setAutoInterval] = useState('60');
@@ -1316,9 +1358,36 @@ export default function App() {
           <div>
             <h1>{BRAND_NAME}</h1>
             <p className="tagline">{BRAND_TAGLINE}</p>
+            {wallet.publicKey ? (
+              <div className="app-header__aux-links" role="group" aria-label="Help">
+                <button
+                  type="button"
+                  className="app-header__tour-btn"
+                  onClick={() => setDashboardTourOpen(true)}
+                  aria-label="Open guided app tour"
+                >
+                  App tour
+                </button>
+                {quickPathDismissed ? (
+                  <>
+                    <span className="app-header__aux-sep" aria-hidden>
+                      ·
+                    </span>
+                    <button
+                      type="button"
+                      className="app-header__tour-btn"
+                      onClick={showQuickPath}
+                      aria-label="Show quick path checklist"
+                    >
+                      Quick path
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
-        <div className="app-header__wallet">
+        <div className="app-header__wallet" data-tour="tour-wallet">
           <span className="rpc-cluster-badge" title={connection.rpcEndpoint}>
             {inferClusterLabel(connection.rpcEndpoint)}
           </span>
@@ -1337,9 +1406,15 @@ export default function App() {
           <div className="start-here-strip__content">
             <strong className="start-here-strip__head">Start here</strong>
             <ol className="start-here-strip__steps">
-              <li>Sign in with a wallet extension or your email wallet (header).</li>
-              <li>Confirm your project number matches onboarding (Setup if you need to change it).</li>
-              <li>Open Overview and tap Refresh data to load balances and payout requests.</li>
+              <li>
+                <strong>Sign in</strong> — Wallet extension or email wallet (header).
+              </li>
+              <li>
+                <strong>Project #</strong> — Match onboarding; fix in Setup if needed.
+              </li>
+              <li>
+                <strong>Overview → Refresh</strong> — Load balances and payout queue.
+              </li>
             </ol>
           </div>
         </div>
@@ -1378,6 +1453,36 @@ export default function App() {
         </div>
       ) : null}
 
+      {wallet.publicKey && !quickPathDismissed ? (
+        <section className="quick-path-strip" aria-labelledby="quick-path-heading">
+          <div className="quick-path-strip__head">
+            <h2 id="quick-path-heading" className="quick-path-strip__title">
+              Quick path
+            </h2>
+            <button type="button" className="ghost quick-path-strip__dismiss" onClick={dismissQuickPath}>
+              Hide
+            </button>
+          </div>
+          <ol className="quick-path-strip__steps">
+            <li>
+              <strong>Project #</strong> — One number on Overview, Setup, and chain.
+            </li>
+            <li>
+              <strong>Refresh Overview</strong> — Sync vault, rules, and payout queue.
+            </li>
+            <li>
+              <strong>Policy</strong> — Who can be paid; set before you spend.
+            </li>
+            <li>
+              <strong>Proposals</strong> — Queue, approve, execute payouts.
+            </li>
+            <li>
+              <strong>Share</strong> — Optional read-only links for others.
+            </li>
+          </ol>
+        </section>
+      ) : null}
+
       <div className="tabs-mobile-wrap">
         <label htmlFor="main-section-select" className="sr-only">
           Main section
@@ -1398,7 +1503,7 @@ export default function App() {
         </select>
       </div>
 
-      <nav className="tabs tabs--scroll" role="tablist" aria-label="Main sections">
+      <nav className="tabs tabs--scroll" role="tablist" aria-label="Main sections" data-tour="tour-tabs">
         <button type="button" role="tab" aria-selected={tab === 'overview'} onClick={() => setTab('overview')}>
           <span className="tab-btn__glyph" aria-hidden>
             <UxIconOverview />
@@ -1485,7 +1590,7 @@ export default function App() {
             Enter the <strong>project number</strong> you chose when you created the team. Your connected wallet must be
             the team lead. Then load the latest info from Solana.
           </p>
-          <div className="field-row">
+          <div className="field-row" data-tour="tour-overview-actions">
             <div className="field" style={{ flex: '0 0 7.5rem' }}>
               <label htmlFor="pid">Project number</label>
               <input
@@ -2277,6 +2382,8 @@ Token full address: ${onChain.mint ?? '—'}`}
           />
         </Suspense>
       )}
+
+      <DashboardTour open={dashboardTourOpen} onClose={closeDashboardTour} tab={tab} setTab={setTab} />
 
       <ToastStack items={toastItems} onDismiss={dismissToast} />
 
