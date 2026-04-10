@@ -722,6 +722,35 @@ pre.compact-block {
   border-radius: 4px;
 }
 
+.overview-help-details {
+  margin-top: 1.25rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.overview-help-details__summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--muted);
+  list-style: none;
+}
+
+.overview-help-details__summary::-webkit-details-marker {
+  display: none;
+}
+
+.overview-help-details__body {
+  margin: 0.5rem 0 0.65rem;
+  font-size: 0.82rem;
+}
+
+.overview-help-details__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 /* Signed-in: punchy checklist (dismissible) */
 .quick-path-strip {
   margin: 0 0 1rem;

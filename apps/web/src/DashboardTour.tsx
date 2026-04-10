@@ -9,18 +9,20 @@ type TourStep = {
   /** Scroll target: element receives a temporary highlight class */
   highlightSelector?: string;
   scrollTop?: boolean;
+  /** Extra wait after tab switch (e.g. lazy-loaded panels) before highlighting */
+  highlightDelayMs?: number;
 };
 
 const STEPS: TourStep[] = [
   {
-    title: 'Welcome to your treasury',
+    title: 'Set up your team escrow vault',
     body: (
       <>
         <p>
-          You are signed in as the <strong>team lead</strong>. This app connects to Solana so you can load your project,
-          set payout rules, and coordinate approvals with teammates.
+          As <strong>team lead</strong>, you will register the project on Solana, turn on the shared token vault, define
+          who can be paid, and put those rules on-chain. Approvers then sign payout requests against that vault.
         </p>
-        <p className="dashboard-tour__tip">The next screens point at the main controls — follow along, or skip anytime.</p>
+        <p className="dashboard-tour__tip">Use Next to walk the path in order, or skip anytime.</p>
       </>
     ),
     scrollTop: true,
@@ -44,9 +46,9 @@ const STEPS: TourStep[] = [
     body: (
       <>
         <p>
-          These tabs are the spine of the app: <strong>Overview</strong> loads live data; <strong>Setup</strong> creates or
-          updates your on-chain team; <strong>Policy</strong> defines who can be paid; <strong>Proposals</strong> is where
-          payout requests live; <strong>Treasury</strong> shows charts; <strong>Share</strong> builds public status links.
+          For vault setup you will mainly use <strong>Overview</strong> (load status), <strong>Setup</strong> (project +
+          vault + deposits), and <strong>Policy</strong> (payout rules). Later: <strong>Proposals</strong> for payout
+          requests, <strong>Treasury</strong> for charts, <strong>Share</strong> for read-only links.
         </p>
       </>
     ),
@@ -54,32 +56,94 @@ const STEPS: TourStep[] = [
     scrollTop: true,
   },
   {
-    title: 'Start on Overview',
+    title: 'Load your project from Solana',
     body: (
       <>
         <p>
-          Confirm the <strong>project number</strong> matches what you use on-chain (and in Setup), then tap{' '}
-          <strong>Refresh data</strong> to pull vault balance, rules version, and payout requests from Solana.
+          Enter your <strong>project number</strong> (the same value you will use under Setup). Tap{' '}
+          <strong>Refresh data</strong> to see whether the project exists yet and to load vault status. If nothing is found,
+          create the project next under Setup, then refresh again.
         </p>
-        <p className="dashboard-tour__tip">You will repeat Refresh whenever you want the latest numbers.</p>
+        <p className="dashboard-tour__tip">Refresh whenever you want the latest balances and rules version.</p>
       </>
     ),
     tab: 'overview',
     highlightSelector: '[data-tour="tour-overview-actions"]',
   },
   {
-    title: 'You are set',
+    title: 'Create the on-chain team project',
     body: (
       <>
         <p>
-          Typical flow: align <strong>Setup</strong> with your program, tune <strong>Policy</strong>, fund the vault, then
-          work payout requests under <strong>Proposals</strong>. Use <strong>Share</strong> when you want a read-only link
-          for stakeholders.
+          First-time only: set the <strong>team name</strong>, list <strong>approver wallets</strong> (yours first), and
+          how many signatures are required. Then run <strong>Create project</strong>. If the project already exists for
+          this wallet and number, you can skip this and continue.
         </p>
-        <p className="dashboard-tour__tip">You will not see this tour again unless you clear site data for this app.</p>
+      </>
+    ),
+    tab: 'setup',
+    highlightSelector: '[data-tour="tour-setup-project"]',
+  },
+  {
+    title: 'Turn on the vault and fund it',
+    body: (
+      <>
+        <p>
+          Paste the token <strong>mint address</strong> (e.g. devnet USDC) and run <strong>Turn vault on for this token</strong>{' '}
+          once. After it succeeds, use <strong>Deposit into vault</strong> to move funds from your wallet into the team
+          escrow. Amounts are in the token&apos;s smallest units.
+        </p>
+        <p className="dashboard-tour__tip">You need a successful Refresh on Overview before vault actions unlock.</p>
+      </>
+    ),
+    tab: 'setup',
+    highlightSelector: '[data-tour="tour-setup-vault"]',
+  },
+  {
+    title: 'Define payout rules',
+    body: (
+      <>
+        <p>
+          Pick a <strong>template</strong> or edit splits and workflow here. This is the off-chain rules document your team
+          follows; it should match who you expect to pay. You will commit a fingerprint on-chain in the next step.
+        </p>
+      </>
+    ),
+    tab: 'policy',
+    highlightSelector: '[data-tour="tour-policy-builder"]',
+    highlightDelayMs: 220,
+  },
+  {
+    title: 'Save rules on-chain',
+    body: (
+      <>
+        <p>
+          Use <strong>Check rules</strong> if you want validation, then <strong>Save rules on-chain</strong> so Solana stores
+          the policy fingerprint. Payout proposals reference that version so everyone agrees which rules apply.
+        </p>
+      </>
+    ),
+    tab: 'policy',
+    highlightSelector: '[data-tour="tour-policy-apply"]',
+    highlightDelayMs: 220,
+  },
+  {
+    title: 'Confirm the vault is live',
+    body: (
+      <>
+        <p>
+          Back on Overview, <strong>Refresh data</strong> and check <strong>Vault ready</strong>, <strong>Vault balance</strong>,
+          and <strong>Rules version</strong>. Then you are ready to open <strong>Proposals</strong> for payout requests, or{' '}
+          <strong>Share</strong> for stakeholders.
+        </p>
+        <p className="dashboard-tour__tip">
+          Open it anytime from the header (<strong>App tour</strong>), or choose <strong>Reset tour</strong> there to
+          start over and turn the automatic sign-in tour back on until you finish or skip.
+        </p>
       </>
     ),
     tab: 'overview',
+    highlightSelector: '[data-tour="tour-overview-stats"]',
     scrollTop: true,
   },
 ];
@@ -124,9 +188,10 @@ export function DashboardTour({ open, onClose, tab, setTab }: Props) {
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
     };
 
+    const delayMs = step.highlightDelayMs ?? (step.tab ? 80 : 0);
     let timeoutId: number | undefined;
     const rafId = window.requestAnimationFrame(() => {
-      timeoutId = window.setTimeout(run, step.tab ? 80 : 0);
+      timeoutId = window.setTimeout(run, delayMs);
     });
     return () => {
       window.cancelAnimationFrame(rafId);
@@ -135,7 +200,7 @@ export function DashboardTour({ open, onClose, tab, setTab }: Props) {
         n.classList.remove('tour-highlight-target');
       });
     };
-  }, [open, stepIndex, step.highlightSelector, step.scrollTop, step.tab, tab]);
+  }, [open, stepIndex, step.highlightSelector, step.highlightDelayMs, step.scrollTop, step.tab, tab]);
 
   const finish = useCallback(() => {
     document.querySelectorAll('.tour-highlight-target').forEach((n) => {

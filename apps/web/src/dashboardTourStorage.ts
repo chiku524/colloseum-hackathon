@@ -30,3 +30,13 @@ export function writeDashboardTour(p: Omit<DashboardTourPayloadV1, 'v'> & { v?: 
     /* ignore */
   }
 }
+
+/** Clears completion so the tour can auto-open on sign-in again until the user finishes or skips. */
+export function clearDashboardTourStorage(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(STRONGHOLD_DASHBOARD_TOUR_KEY);
+  } catch {
+    /* ignore */
+  }
+}

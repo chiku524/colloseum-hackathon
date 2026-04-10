@@ -38,7 +38,7 @@ import {
 } from './auditExport';
 import { mergeSplitsIntoPolicy } from './csvPolicy';
 import { DashboardTour } from './DashboardTour';
-import { readDashboardTour, writeDashboardTour } from './dashboardTourStorage';
+import { clearDashboardTourStorage, readDashboardTour, writeDashboardTour } from './dashboardTourStorage';
 import { readOnboarding, type OnboardingPayloadV1 } from './onboardingStorage';
 import { ensureWalletAta, recipientAtaForMint } from './splUtil';
 import { inferClusterLabel } from './rpcCluster';
@@ -261,6 +261,13 @@ export default function App() {
     writeDashboardTour({ completed: true });
     setDashboardTourOpen(false);
   }, []);
+
+  const resetAndOpenDashboardTour = useCallback(() => {
+    clearDashboardTourStorage();
+    setDashboardTourOpen(false);
+    queueMicrotask(() => setDashboardTourOpen(true));
+    pushToast('Tour reset — starts from step 1. It will auto-open after sign-in again until you finish or skip.');
+  }, [pushToast]);
 
   const dismissQuickPath = useCallback(() => {
     setQuickPathDismissed(true);
@@ -1359,7 +1366,7 @@ export default function App() {
             <h1>{BRAND_NAME}</h1>
             <p className="tagline">{BRAND_TAGLINE}</p>
             {wallet.publicKey ? (
-              <div className="app-header__aux-links" role="group" aria-label="Help">
+              <div className="app-header__aux-links" role="group" aria-label="Help and guided tour">
                 <button
                   type="button"
                   className="app-header__tour-btn"
@@ -1367,6 +1374,17 @@ export default function App() {
                   aria-label="Open guided app tour"
                 >
                   App tour
+                </button>
+                <span className="app-header__aux-sep" aria-hidden>
+                  ·
+                </span>
+                <button
+                  type="button"
+                  className="app-header__tour-btn"
+                  onClick={resetAndOpenDashboardTour}
+                  aria-label="Reset guided tour and open from step 1"
+                >
+                  Reset tour
                 </button>
                 {quickPathDismissed ? (
                   <>
@@ -1610,6 +1628,7 @@ export default function App() {
             Must match the number you used under Setup. Amounts elsewhere are in the token’s smallest units (see field
             hints).
           </p>
+          <div data-tour="tour-overview-stats">
           {wallet.publicKey && !busy && !onChain ? (
             <div className="ux-empty-hint" role="status">
               <div className="ux-empty-hint__art" aria-hidden>
@@ -1713,6 +1732,7 @@ Token full address: ${onChain.mint ?? '—'}`}
               </div>
             </>
           )}
+          </div>
           {proposals.length > 0 && (
             <div className="proposal-list" aria-label="Payout requests">
               {proposals.map((p) => (
@@ -1729,6 +1749,22 @@ Token full address: ${onChain.mint ?? '—'}`}
               ))}
             </div>
           )}
+          <details className="overview-help-details">
+            <summary className="overview-help-details__summary">Help — guided tour & this device</summary>
+            <p className="muted overview-help-details__body">
+              <strong>App tour</strong> opens the vault setup walkthrough. <strong>Reset tour</strong> clears completion on
+              this browser, opens from step 1, and restores the automatic tour after sign-in until you finish or skip.
+              The same shortcuts appear under the brand in the header.
+            </p>
+            <div className="overview-help-details__actions">
+              <button type="button" className="ghost" onClick={() => setDashboardTourOpen(true)}>
+                App tour
+              </button>
+              <button type="button" className="ghost" onClick={resetAndOpenDashboardTour}>
+                Reset tour
+              </button>
+            </div>
+          </details>
         </div>
       )}
 
@@ -1799,7 +1835,7 @@ Token full address: ${onChain.mint ?? '—'}`}
 
       {tab === 'setup' && (
         <>
-          <div className="panel">
+          <div className="panel" data-tour="tour-setup-project">
             <SectionHeader icon={<UxIconSetup />} title="Create your team project" />
             <p className="muted">
               Use the same <strong>project number</strong> as on Overview. List everyone who can approve payouts —{' '}
@@ -1846,7 +1882,7 @@ Token full address: ${onChain.mint ?? '—'}`}
             </div>
           </div>
 
-          <div className="panel">
+          <div className="panel" data-tour="tour-setup-vault">
             <SectionHeader icon={<UxIconVault />} title="Vault & deposits" />
             <p className="muted">
               Pick <strong>which token</strong> the vault should hold (paste its <strong>mint address</strong> — the same
@@ -2069,7 +2105,7 @@ Token full address: ${onChain.mint ?? '—'}`}
               );
             })()}
 
-          <div className="panel">
+          <div className="panel" data-tour="tour-policy-apply">
             <div className="policy-advanced-head">
               <SectionHeader
                 icon={<UxIconCode />}

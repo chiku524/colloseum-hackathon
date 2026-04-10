@@ -108,7 +108,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
 
   if (!model) {
     return (
-      <div className="panel policy-builder">
+      <div className="panel policy-builder" data-tour="tour-policy-builder">
         <SectionHeader icon={<UxIconPolicy />} title="Policy builder" />
         {parseErr ? (
           <p className="error" role="alert">
@@ -124,7 +124,7 @@ export function PolicyBuilder({ policyText, onPolicyTextChange, teamLead }: Poli
   const matchedTimelockPreset = TIMELOCK_PRESETS.find((x) => x.secs === model.defaultTimelockSecs);
 
   return (
-    <div className="panel policy-builder">
+    <div className="panel policy-builder" data-tour="tour-policy-builder">
       <SectionHeader icon={<UxIconPolicy />} title="Payout rules" />
       <p className="muted">
         Pick a template or edit splits below. This drives the “what if” calculator and optional checks before you sign a
