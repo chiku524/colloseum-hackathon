@@ -947,6 +947,15 @@ export default function App() {
     try {
       const mint = new PublicKey(onChain.mint);
       const depositorAta = await ensureWalletAta(connection, wallet, mint);
+      const depBal = await connection.getTokenAccountBalance(depositorAta);
+      const depBalBn = new BN(depBal.value.amount);
+      if (amount.gt(depBalBn)) {
+        setErr(
+          `That deposit (${amount.toString()} in the token’s smallest units) is more than this wallet holds for this mint (${depBalBn.toString()}). ` +
+            `Try a smaller amount, or send yourself more of this token on ${rpcClusterLabel} first (mint ${onChain.mint}).`,
+        );
+        return;
+      }
       const [vaultState] = PublicKey.findProgramAddressSync(
         [Buffer.from('vault'), onChain.project.toBuffer()],
         PROGRAM_ID,

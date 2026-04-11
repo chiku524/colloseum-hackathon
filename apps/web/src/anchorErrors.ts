@@ -71,11 +71,23 @@ function tipForCode(code: number): string | undefined {
   return undefined;
 }
 
+function errorDiagnosticText(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  if (typeof e !== 'object' || e === null) return raw;
+  const logs = (e as { logs?: string[] }).logs;
+  if (Array.isArray(logs) && logs.length) {
+    return `${raw}\n${logs.join('\n')}`;
+  }
+  return raw;
+}
+
 /**
  * Prefer a friendly line for program errors; pass through wallet/RPC messages otherwise.
  */
 export function formatTxError(e: unknown): string {
   const raw = e instanceof Error ? e.message : String(e);
+  const diagnostic = errorDiagnosticText(e);
+  const lower = diagnostic.toLowerCase();
 
   const numMatch = raw.match(/Error Number:\s*(\d{4,5})\b/);
   if (numMatch) {
@@ -111,6 +123,16 @@ export function formatTxError(e: unknown): string {
       'This wallet has no SOL on this network yet (common for email wallets on Devnet). ' +
       'The app requests test SOL automatically before signing when it can; if you still see this, fund the wallet at https://faucet.solana.com ' +
       '(same cluster as this page).'
+    );
+  }
+
+  if (
+    lower.includes('insufficient funds') &&
+    (lower.includes('tokenkeg') || lower.includes('instruction: deposit'))
+  ) {
+    return (
+      'This wallet’s token balance is too low for that deposit. Amounts are in the mint’s smallest units ' +
+      '(e.g. 1 SOL = 1,000,000,000 lamports). Lower the number, or add more of this token to your wallet on this network first.'
     );
   }
 
