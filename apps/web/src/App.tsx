@@ -45,6 +45,7 @@ import { inferClusterLabel } from './rpcCluster';
 import { CLUSTER_LABELS } from './solanaCluster';
 import { useClusterTransactionGuard } from './useClusterTransactionGuard';
 import { ToastStack, useToast } from './ToastStack';
+import { TxSignatureBlock } from './TxSignatureBlock';
 import { UxAccordion } from './UxAccordion';
 import {
   SectionHeader,
@@ -177,6 +178,7 @@ export default function App() {
   const [baselineText, setBaselineText] = useState('');
   const [depositSim, setDepositSim] = useState('1000000');
   const [status, setStatus] = useState<string | null>(null);
+  const [statusTxSig, setStatusTxSig] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { items: toastItems, push: pushToast, dismiss: dismissToast } = useToast();
@@ -190,6 +192,11 @@ export default function App() {
     genesisError: clusterGenesisError,
     guardBeforeSignTransaction,
   } = useClusterTransactionGuard(connection, wallet);
+
+  const clearStatusLine = useCallback(() => {
+    setStatus(null);
+    setStatusTxSig(null);
+  }, []);
 
   const [onChain, setOnChain] = useState<{
     project: PublicKey;
@@ -435,7 +442,7 @@ export default function App() {
 
   const loadOnChain = useCallback(async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !projectPda) {
       setErr('Enter a valid project number and PDA anchor wallet (or connect your wallet and leave anchor blank).');
       return;
@@ -581,6 +588,7 @@ export default function App() {
       const canon = canonicalPolicyJson(p);
       const h = await sha256BytesUtf8(canon);
       setStatus(`Fingerprint of your rules (for checking they match on-chain): ${hex32(h)}`);
+      setStatusTxSig(null);
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -605,6 +613,7 @@ export default function App() {
       setStatus(
         `Practice run (smallest units):\nHold back: ${holdback}\n${rows}\nLeft over in the vault after splits: ${remainder}`,
       );
+      setStatusTxSig(null);
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -612,7 +621,7 @@ export default function App() {
 
   const onCopySimulatorLink = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     try {
       const p = parsePolicy();
       const v = validatePolicy(p);
@@ -640,7 +649,7 @@ export default function App() {
 
   const onApplyPolicy = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !projectPda || !wallet.publicKey) {
       setErr('Connect your wallet first.');
       return;
@@ -670,7 +679,8 @@ export default function App() {
           project: projectPda,
         })
         .rpc();
-      setStatus(`Rules saved on-chain. Transaction: ${sig}`);
+      setStatus('Rules saved on-chain.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -683,6 +693,7 @@ export default function App() {
     setErr(null);
     try {
       setStatus(simpleLineDiff(baselineText, policyText));
+      setStatusTxSig(null);
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -699,7 +710,7 @@ export default function App() {
 
   const onAttachArtifact = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) {
       setErr('Load your project first (Overview → Refresh data).');
       return;
@@ -725,7 +736,8 @@ export default function App() {
           proposal: propPda,
         })
         .rpc();
-      setStatus(`Delivery proof saved. Transaction: ${sig}`);
+      setStatus('Delivery proof saved.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -736,7 +748,7 @@ export default function App() {
 
   const onOpenDispute = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) {
       setErr('Load your project first (Overview → Refresh data).');
       return;
@@ -754,7 +766,8 @@ export default function App() {
           proposal: propPda,
         })
         .rpc();
-      setStatus(`open_dispute tx: ${sig}`);
+      setStatus('Dispute opened.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -765,7 +778,7 @@ export default function App() {
 
   const onResolveDispute = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) {
       setErr('Load your project first (Overview → Refresh data).');
       return;
@@ -783,7 +796,8 @@ export default function App() {
           proposal: propPda,
         })
         .rpc();
-      setStatus(`Dispute closed. Transaction: ${sig}`);
+      setStatus('Dispute closed.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -811,7 +825,7 @@ export default function App() {
 
   const onCreateProject = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !createProjectPda) {
       setErr('Connect your wallet and enter the same project number you use on Overview.');
       return;
@@ -841,7 +855,8 @@ export default function App() {
           systemProgram: SystemProgram.programId,
         })
         .rpc();
-      setStatus(`Project created. Transaction: ${sig}`);
+      setStatus('Project created.');
+      setStatusTxSig(sig);
       setPdaSeedOwnerInput(wallet.publicKey.toBase58());
       await loadOnChain();
     } catch (e) {
@@ -853,7 +868,7 @@ export default function App() {
 
   const onInitVault = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !projectPda || !onChain) {
       setErr('Load your project first (Overview → Refresh data).');
       return;
@@ -887,7 +902,8 @@ export default function App() {
           systemProgram: SystemProgram.programId,
         })
         .rpc();
-      setStatus(`Vault is ready for this token. Transaction: ${sig}`);
+      setStatus('Vault is ready for this token.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -898,7 +914,7 @@ export default function App() {
 
   const onDeposit = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain?.mint) {
       setErr('Finish vault setup first (Setup → turn the vault on).');
       return;
@@ -932,7 +948,8 @@ export default function App() {
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc();
-      setStatus(`Deposit submitted. Transaction: ${sig}`);
+      setStatus('Deposit submitted.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -943,7 +960,7 @@ export default function App() {
 
   const onProposeRelease = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) {
       setErr('Load your project first (Overview → Refresh data).');
       return;
@@ -990,7 +1007,8 @@ export default function App() {
           systemProgram: SystemProgram.programId,
         })
         .rpc();
-      setStatus(`Payout request #${nextId} created. Transaction: ${sig}`);
+      setStatus(`Payout request #${nextId} created.`);
+      setStatusTxSig(sig);
       setOpsProposalId(String(nextId));
       await loadOnChain();
     } catch (e) {
@@ -1002,7 +1020,7 @@ export default function App() {
 
   const onApproveRelease = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) return;
     const pid = Number(opsProposalId);
     if (!Number.isInteger(pid) || pid < 0) {
@@ -1021,7 +1039,8 @@ export default function App() {
           proposal: proposalPda,
         })
         .rpc();
-      setStatus(`Your approval was recorded. Transaction: ${sig}`);
+      setStatus('Your approval was recorded.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1032,7 +1051,7 @@ export default function App() {
 
   const onExecuteRelease = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain?.mint) {
       setErr('Load your project and finish vault setup first.');
       return;
@@ -1106,7 +1125,8 @@ export default function App() {
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc();
-      setStatus(`Payment sent. Transaction: ${sig}`);
+      setStatus('Payment sent.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1117,7 +1137,7 @@ export default function App() {
 
   const onCancelProposal = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) return;
     const pid = Number(opsProposalId);
     if (!Number.isInteger(pid) || pid < 0) {
@@ -1136,7 +1156,8 @@ export default function App() {
           proposal: proposalPda,
         })
         .rpc();
-      setStatus(`Payout request cancelled. Transaction: ${sig}`);
+      setStatus('Payout request cancelled.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1147,7 +1168,7 @@ export default function App() {
 
   const onSetFrozen = async (frozen: boolean) => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) return;
     if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
@@ -1159,9 +1180,8 @@ export default function App() {
           project: onChain.project,
         })
         .rpc();
-      setStatus(
-        frozen ? `Payouts are paused (emergency stop on). Transaction: ${sig}` : `Payouts are unpaused. Transaction: ${sig}`,
-      );
+      setStatus(frozen ? 'Payouts are paused (emergency stop on).' : 'Payouts are unpaused.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1172,7 +1192,7 @@ export default function App() {
 
   const onSetRequireArtifact = async (require: boolean) => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) return;
     if (!(await guardBeforeSignTransaction())) return;
     setBusy(true);
@@ -1185,10 +1205,9 @@ export default function App() {
         })
         .rpc();
       setStatus(
-        require
-          ? `Delivery proof now required before paying out. Transaction: ${sig}`
-          : `Delivery proof no longer required to pay out. Transaction: ${sig}`,
+        require ? 'Delivery proof now required before paying out.' : 'Delivery proof no longer required to pay out.',
       );
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1199,7 +1218,7 @@ export default function App() {
 
   const onBeginTeamLeadHandoff = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) {
       setErr('Load your project first (Overview → Refresh data).');
       return;
@@ -1226,7 +1245,8 @@ export default function App() {
           project: onChain.project,
         })
         .rpc();
-      setStatus(`Handoff started — the new wallet must sign “Complete handoff”. Transaction: ${sig}`);
+      setStatus('Handoff started — the new wallet must sign “Complete handoff”.');
+      setStatusTxSig(sig);
       setHandoffDestination('');
       await loadOnChain();
     } catch (e) {
@@ -1238,7 +1258,7 @@ export default function App() {
 
   const onAcceptTeamLeadHandoff = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) {
       setErr('Load your project first (Overview → Refresh data).');
       return;
@@ -1261,7 +1281,8 @@ export default function App() {
           project: onChain.project,
         })
         .rpc();
-      setStatus(`You are now the team lead for this project. Transaction: ${sig}`);
+      setStatus('You are now the team lead for this project.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1272,7 +1293,7 @@ export default function App() {
 
   const onCancelTeamLeadHandoff = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) return;
     if (!onChain.pendingTeamLead) {
       setErr('There is no pending handoff to cancel.');
@@ -1288,7 +1309,8 @@ export default function App() {
           project: onChain.project,
         })
         .rpc();
-      setStatus(`Handoff cancelled. Transaction: ${sig}`);
+      setStatus('Handoff cancelled.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1302,7 +1324,7 @@ export default function App() {
 
   const onUpgradeProjectLayout = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !projectPda) {
       setErr('Connect your wallet and set the project number.');
       return;
@@ -1324,7 +1346,8 @@ export default function App() {
           systemProgram: SystemProgram.programId,
         })
         .rpc();
-      setStatus(`Project upgraded for automation (one-time step). Transaction: ${sig}`);
+      setStatus('Project upgraded for automation (one-time step).');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1335,7 +1358,7 @@ export default function App() {
 
   const onConfigureAutomation = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) {
       setErr('Load your project first (Overview → Refresh data).');
       return;
@@ -1426,7 +1449,8 @@ export default function App() {
           project: onChain.project,
         })
         .rpc();
-      setStatus(`Automation settings saved. Transaction: ${sig}`);
+      setStatus('Automation settings saved.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1437,7 +1461,7 @@ export default function App() {
 
   const onCrankAutomation = async () => {
     setErr(null);
-    setStatus(null);
+    clearStatusLine();
     if (!program || !wallet.publicKey || !onChain?.mint) {
       setErr('Load your project and finish vault setup first.');
       return;
@@ -1484,7 +1508,8 @@ export default function App() {
         })
         .remainingAccounts(remainingAccounts)
         .rpc();
-      setStatus(`Automation run finished. Transaction: ${sig}`);
+      setStatus('Automation run finished.');
+      setStatusTxSig(sig);
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -2688,7 +2713,10 @@ Token full address: ${onChain.mint ?? '—'}`}
             </p>
           </div>
         )}
-        {status && <pre className="ok">{status}</pre>}
+        {statusTxSig ? (
+          <TxSignatureBlock signature={statusTxSig} cluster={rpcCluster} notify={pushToast} />
+        ) : null}
+        {status ? <pre className="ok">{status}</pre> : null}
       </div>
     </div>
   );
