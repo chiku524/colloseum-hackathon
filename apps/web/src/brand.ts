@@ -21,4 +21,6 @@ export const DOCUMENT_TITLES = {
   status: `Public treasury status — ${BRAND_NAME}`,
   simulate: `Payout “what if” calculator — ${BRAND_NAME}`,
   docs: `Documentation — ${BRAND_NAME}`,
+  /** Unlisted route: `/executive-summary` (not linked in the main UI). */
+  executiveSummary: `Executive summary — ${BRAND_NAME}`,
 } as const;

@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+declare module '*.md?raw' {
+  const src: string;
+  export default src;
+}
+
 declare module '@idl' {
   const idl: { address: string; [key: string]: unknown };
   export default idl;

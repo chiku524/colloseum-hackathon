@@ -16,6 +16,9 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 import { StrongholdEmbeddedWalletAdapter } from './StrongholdEmbeddedWalletAdapter';
 
 const DocsPage = lazy(() => import('./DocsPage').then((m) => ({ default: m.DocsPage })));
+const ExecutiveSummaryPage = lazy(() =>
+  import('./ExecutiveSummaryPage').then((m) => ({ default: m.ExecutiveSummaryPage })),
+);
 
 const network = WalletAdapterNetwork.Devnet;
 const endpoint = import.meta.env.VITE_RPC_URL ?? clusterApiUrl(network);
@@ -46,10 +49,11 @@ function Root() {
   );
 }
 
-function entryView(): 'main' | 'status' | 'simulate' | 'docs' {
+function entryView(): 'main' | 'status' | 'simulate' | 'docs' | 'executive-summary' {
   if (typeof window === 'undefined') return 'main';
   const path = window.location.pathname.replace(/\/$/, '') || '/';
   if (path === '/docs') return 'docs';
+  if (path === '/executive-summary') return 'executive-summary';
   const v = new URLSearchParams(window.location.search).get('view');
   if (v === 'status') return 'status';
   if (v === 'simulate') return 'simulate';
@@ -66,7 +70,9 @@ if (typeof document !== 'undefined') {
         ? DOCUMENT_TITLES.simulate
         : view === 'docs'
           ? DOCUMENT_TITLES.docs
-          : DOCUMENT_TITLES.main;
+          : view === 'executive-summary'
+            ? DOCUMENT_TITLES.executiveSummary
+            : DOCUMENT_TITLES.main;
 }
 
 createRoot(document.getElementById('root')!).render(
@@ -84,6 +90,16 @@ createRoot(document.getElementById('root')!).render(
         }
       >
         <DocsPage />
+      </Suspense>
+    ) : view === 'executive-summary' ? (
+      <Suspense
+        fallback={
+          <div className="app-shell" style={{ padding: '2rem' }}>
+            <p className="muted">Loading…</p>
+          </div>
+        }
+      >
+        <ExecutiveSummaryPage />
       </Suspense>
     ) : (
       <Root />
