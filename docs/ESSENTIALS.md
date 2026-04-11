@@ -148,6 +148,7 @@ Full detail: `[SECURITY-AND-EMBED.md](./SECURITY-AND-EMBED.md)`.
 
 | Document                                                                 | Contents                                                                                |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| **[`APP-GUIDE.md`](./APP-GUIDE.md)**                                   | **Full UI walkthrough:** every tab (Overview → Share), payouts, automation, exports, embeds. |
 | **In-app docs** (`/docs` on the web deployment)                          | Same guides as this folder, rendered in the UI; optional `?doc=SLUG` (slug = markdown filename without `.md`). |
 | `[CREATOR-TREASURY-BUILD-PLAN.md](./CREATOR-TREASURY-BUILD-PLAN.md)`     | Phased roadmap, architecture, future embeds.                                            |
 | `[DESIGN-AUTOMATED-DISBURSEMENT.md](./DESIGN-AUTOMATED-DISBURSEMENT.md)` | Feasibility of opt-in “set and forget” / scheduled payouts (no on-chain plain English). |

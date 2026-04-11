@@ -58,6 +58,7 @@ The dashboard and public views are documented in [`apps/web/README.md`](apps/web
 
 - **Root Directory:** `apps/web`
 - **Env:** `npm run vercel:generate-env` → import **`apps/web/.env.vercel.paste`** (gitignored). Template without secrets: **`apps/web/vercel.environment.template`**. Details in **`apps/web/.env.example`** and **`docs/SECURITY-AND-EMBED.md`**.
+- **SPA routes:** `apps/web/vercel.json` rewrites unmatched paths to **`index.html`** so **`/docs`** and similar client routes do not 404 on hard refresh (API and static files still win first).
 - After changing **`VITE_*`**, trigger a new deployment.
 - **GitHub Actions:** pushes to **`main`** run **`.github/workflows/vercel-production.yml`** when the repo secret **`VERCEL_TOKEN_HACKATHON`** is set (create a token under [Vercel → Account → Tokens](https://vercel.com/account/tokens)). **`/.vercel/project.json`** or **`apps/web/.vercel/project.json`** links the CLI to your Vercel project (e.g. **web3stronghold**); keep **Root Directory** set to **`apps/web`** (do not combine that with `vercel --cwd apps/web` or paths double). If you renamed the GitHub repo, reconnect the project under **Vercel → Project → Settings → Git** to **chiku524/web3stronghold**.
 

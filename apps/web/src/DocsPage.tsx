@@ -245,6 +245,23 @@ export function DocsPage() {
               <p className="muted">
                 These pages mirror the Markdown in <code>docs/</code> at build time. Use the sidebar to open a guide, or jump in below.
               </p>
+              <div className="docs-index__start" role="navigation" aria-label="Recommended reading order">
+                <h3 className="docs-index__start-title">Start here</h3>
+                <ol className="docs-index__start-list">
+                  {(['ESSENTIALS', 'APP-GUIDE', 'SECURITY-AND-EMBED'] as const).flatMap((id) => {
+                    const entry = catalog.byId.get(id);
+                    if (!entry) return [];
+                    return [
+                      <li key={id}>
+                        <button type="button" className="docs-index__start-link" onClick={() => onSelectDoc(id)}>
+                          {entry.title}
+                        </button>
+                      </li>,
+                    ];
+                  })}
+                </ol>
+              </div>
+              <h3 className="docs-index__all-title">All topics</h3>
               <ul className="docs-index__cards">
                 {catalog.list.map((e) => (
                   <li key={e.id}>

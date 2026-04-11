@@ -31,6 +31,7 @@ npm run build
 1. **Project → Settings → General → Root Directory:** `apps/web` (required).
 2. **Environment variables:** generate a paste file from the monorepo root with `npm run vercel:generate-env`, then import `**apps/web/.env.vercel.paste`** in Vercel (or copy keys from `vercel.environment.template` and fill secrets manually). See `**apps/web/.env.example**`.
 3. Redeploy after changing `**VITE_***` so the client rebuilds.
+4. **SPA deep links:** `vercel.json` rewrites unknown paths to `index.html` so **`/docs`**, **`/executive-summary`**, and other client-only routes work on refresh. **`/api/*`** and real static files still match first.
 
 **Local full stack:** from the **repo root**, run `npx vercel dev --cwd apps/web` so Vite + `/api/*` use the linked project (`.vercel/project.json` lives at the monorepo root to match CI and dashboard Root Directory `apps/web`).
 
