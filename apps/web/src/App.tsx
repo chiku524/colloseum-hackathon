@@ -448,7 +448,6 @@ export default function App() {
 
   const loadOnChain = useCallback(async () => {
     setErr(null);
-    clearStatusLine();
     if (!program || !projectPda) {
       setErr('Enter a valid project number and PDA anchor wallet (or connect your wallet and leave anchor blank).');
       return;
@@ -875,7 +874,7 @@ export default function App() {
   const onInitVault = async () => {
     setErr(null);
     clearStatusLine();
-    if (!program || !wallet.publicKey || !projectPda || !onChain) {
+    if (!program || !wallet.publicKey || !onChain) {
       setErr('Load your project first (Overview → Refresh data).');
       return;
     }
@@ -886,11 +885,21 @@ export default function App() {
       setErr('That token address does not look valid. Paste the full mint address for the coin you want to hold.');
       return;
     }
+    if (
+      projectPda &&
+      onChain.project &&
+      !onChain.project.equals(projectPda)
+    ) {
+      setErr(
+        'Overview’s project number or PDA anchor no longer matches the treasury you loaded. Click Refresh data (or fix those fields) so they match, then try again.',
+      );
+      return;
+    }
     if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const [vaultState] = PublicKey.findProgramAddressSync(
-        [Buffer.from('vault'), projectPda.toBuffer()],
+        [Buffer.from('vault'), onChain.project.toBuffer()],
         PROGRAM_ID,
       );
       const vaultAta = getAssociatedTokenAddressSync(mint, vaultState, true);
@@ -899,7 +908,7 @@ export default function App() {
         .accounts({
           payer: wallet.publicKey,
           teamLead: wallet.publicKey,
-          project: projectPda,
+          project: onChain.project,
           mint,
           vaultState,
           vaultTokenAccount: vaultAta,
@@ -1827,7 +1836,15 @@ export default function App() {
                 aria-describedby="pid-hint"
               />
             </div>
-            <button type="button" className="ghost" disabled={busy || !program || !projectPda} onClick={loadOnChain}>
+            <button
+              type="button"
+              className="ghost"
+              disabled={busy || !program || !projectPda}
+              onClick={() => {
+                clearStatusLine();
+                void loadOnChain();
+              }}
+            >
               {busy ? 'Loading…' : 'Refresh data'}
             </button>
           </div>
@@ -2047,7 +2064,15 @@ Token full address: ${onChain.mint ?? '—'}`}
             </Suspense>
           )}
           <div className="btn-row" style={{ marginTop: '1rem' }}>
-            <button type="button" className="ghost" disabled={busy || !program || !projectPda} onClick={loadOnChain}>
+            <button
+              type="button"
+              className="ghost"
+              disabled={busy || !program || !projectPda}
+              onClick={() => {
+                clearStatusLine();
+                void loadOnChain();
+              }}
+            >
               {busy ? 'Refreshing…' : 'Refresh numbers'}
             </button>
           </div>
@@ -2709,7 +2734,15 @@ Token full address: ${onChain.mint ?? '—'}`}
             <p className="error">{err}</p>
             {tab === 'overview' && wallet.publicKey && program && projectPda ? (
               <div className="btn-row">
-                <button type="button" className="ghost" disabled={busy} onClick={() => void loadOnChain()}>
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    clearStatusLine();
+                    void loadOnChain();
+                  }}
+                >
                   Try loading again
                 </button>
               </div>

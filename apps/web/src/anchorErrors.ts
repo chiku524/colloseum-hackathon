@@ -99,6 +99,13 @@ export function formatTxError(e: unknown): string {
     }
   }
 
+  if (raw.includes('AccountNotInitialized') && raw.includes('3012')) {
+    return (
+      'An on-chain account the program expected (often your project) is missing or was looked up with the wrong address. ' +
+      'Confirm your project number and PDA anchor match the treasury you created, tap Refresh data on Overview, then retry.'
+    );
+  }
+
   if (raw.includes('Attempt to debit an account but found no record of a prior credit')) {
     return (
       'This wallet has no SOL on this network yet (common for email wallets on Devnet). ' +
