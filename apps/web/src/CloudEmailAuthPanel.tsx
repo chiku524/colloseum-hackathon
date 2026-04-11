@@ -89,6 +89,8 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
   const [phase, setPhase] = useState<Phase>('loading');
   const [session, setSession] = useState<Session | null>(null);
   const [keybagRow, setKeybagRow] = useState<SolanaKeybagRow | null>(null);
+  const keybagRowRef = useRef<SolanaKeybagRow | null>(null);
+  keybagRowRef.current = keybagRow;
   const [emailTab, setEmailTab] = useState<'sign-in' | 'register'>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -97,6 +99,8 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
   passwordRef.current = password;
   /** Separate from `password` so keybag unlock is not wiped when the unlock step mounts (browser autofill / remount quirks). */
   const [keybagUnlockPassword, setKeybagUnlockPassword] = useState('');
+  /** Read at submit so browser autofill/password managers sync even if React state lags one frame. */
+  const unlockPwInputRef = useRef<HTMLInputElement>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [recoveryInput, setRecoveryInput] = useState('');
@@ -141,6 +145,16 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
     const route = async (sess: Session | null, event?: AuthChangeEvent) => {
       if (cancelled) return;
       if (event === 'USER_UPDATED' && phaseRef.current === 'password_recovery') {
+        return;
+      }
+      // Token refresh after cold load: avoid re-running routing (and setAuthErr(null)) while the user is on unlock.
+      if (
+        sess &&
+        event === 'TOKEN_REFRESHED' &&
+        phaseRef.current === 'unlock_keybag' &&
+        keybagRowRef.current
+      ) {
+        setSession(sess);
         return;
       }
       setSession(sess);
@@ -193,9 +207,9 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
           // Only copy auth → keybag unlock on fresh sign-in. INITIAL_SESSION / TOKEN_REFRESHED
           // also hit this branch after refresh; re-copying from passwordRef (always '') wiped
           // keybagUnlockPassword after the user had already typed it.
-          if (event === 'SIGNED_IN') {
-            const pw = passwordRef.current;
-            setKeybagUnlockPassword(pw);
+          // Restored sessions sometimes emit SIGNED_IN with no auth form password — never overwrite a typed unlock password.
+          if (event === 'SIGNED_IN' && passwordRef.current.length > 0) {
+            setKeybagUnlockPassword(passwordRef.current);
             setPassword('');
           }
           setPhase('unlock_keybag');
@@ -405,14 +419,17 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
 
   const onUnlockKeybag = useCallback(async () => {
     setAuthErr(null);
-    if (!keybagRow) return;
-    if (!keybagUnlockPassword) {
+    const row = keybagRowRef.current;
+    if (!row) return;
+    const raw = unlockPwInputRef.current?.value ?? keybagUnlockPassword;
+    const pw = raw.trim();
+    if (!pw) {
       setAuthErr('Enter your account password (the same one you use to sign in).');
       return;
     }
     setBusyAction('unlock');
     try {
-      const kp = await unlockKeypairFromKeybag(keybagRow, keybagUnlockPassword);
+      const kp = await unlockKeypairFromKeybag(row, pw);
       await connectEmbedded(kp);
       setPassword('');
       setKeybagUnlockPassword('');
@@ -421,7 +438,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
     } finally {
       setBusyAction(null);
     }
-  }, [connectEmbedded, keybagRow, keybagUnlockPassword]);
+  }, [connectEmbedded, keybagUnlockPassword]);
 
   const onPasswordRecoveryComplete = useCallback(async () => {
     setAuthErr(null);
@@ -621,9 +638,10 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
           <label className="auth-field">
             <span>Password</span>
             <input
+              ref={unlockPwInputRef}
               type="password"
               name="keybag-unlock-password"
-              autoComplete="off"
+              autoComplete="current-password"
               value={keybagUnlockPassword}
               onChange={(e) => setKeybagUnlockPassword(e.target.value)}
             />
