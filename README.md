@@ -52,7 +52,7 @@ Helpers: `npm run devnet:help`, `npm run solana:devnet -- <solana args>`.
 cd apps/web && npm install && npm run dev
 ```
 
-See [`apps/web/README.md`](apps/web/README.md) and [`docs/ESSENTIALS.md`](docs/ESSENTIALS.md).
+The dashboard and public views are documented in [`apps/web/README.md`](apps/web/README.md) and [`docs/ESSENTIALS.md`](docs/ESSENTIALS.md). After deploy (or locally), open **`/docs`** for the bundled documentation hub (same Markdown as `docs/`).
 
 ## Vercel
 

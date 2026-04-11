@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatTxError } from './anchorErrors';
 import { BRAND_NAME } from './brand';
+import { SiteFooter } from './SiteFooter';
 import { BrandMark } from './BrandMark';
 import { SharedViewBanner } from './SharedViewBanner';
 import {
@@ -95,6 +96,8 @@ export function PolicySimulatorShare() {
         {err && <p className="error">{err}</p>}
         {status && <pre className="ok">{status}</pre>}
       </div>
+
+      <SiteFooter />
     </div>
   );
 }

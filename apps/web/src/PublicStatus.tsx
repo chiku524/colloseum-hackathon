@@ -5,6 +5,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import idlJson from '@idl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BRAND_NAME } from './brand';
+import { SiteFooter } from './SiteFooter';
 import { BrandMark } from './BrandMark';
 import { SharedViewBanner } from './SharedViewBanner';
 import { hex32 } from './policy';
@@ -531,6 +532,8 @@ Data from: ${state.rpcUsed ?? 'browser'}`}
           )}
         </>
       )}
+
+      {!displayParams.embed ? <SiteFooter /> : null}
     </div>
   );
 }

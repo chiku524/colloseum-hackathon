@@ -23,7 +23,9 @@
     "buffer": "^6.0.3",
     "jose": "^6.2.2",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "overrides": {
     "@types/react": "18.3.18",

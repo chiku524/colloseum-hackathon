@@ -44,6 +44,7 @@ import { ensureWalletAta, recipientAtaForMint } from './splUtil';
 import { inferClusterLabel } from './rpcCluster';
 import { CLUSTER_LABELS } from './solanaCluster';
 import { useClusterTransactionGuard } from './useClusterTransactionGuard';
+import { SiteFooter } from './SiteFooter';
 import { ToastStack, useToast } from './ToastStack';
 import { TxSignatureBlock } from './TxSignatureBlock';
 import { UxAccordion } from './UxAccordion';
@@ -2766,6 +2767,8 @@ Token full address: ${onChain.mint ?? '—'}`}
         ) : null}
         {status ? <pre className="ok">{status}</pre> : null}
       </div>
+
+      <SiteFooter />
     </div>
   );
 }

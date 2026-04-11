@@ -49,8 +49,9 @@ Details: `[../docs/SECURITY-AND-EMBED.md](../docs/SECURITY-AND-EMBED.md)`.
 ## URL modes (browser)
 
 
-| Query                                          | Purpose                                                  |
+| Path / query                                   | Purpose                                                  |
 | ---------------------------------------------- | -------------------------------------------------------- |
+| `/docs` (optional `?doc=<slug>`)               | Documentation hub: repo `docs/*.md` inlined at **build** time (slug = filename without `.md`). |
 | `?view=status&team_lead=<pk>&project_id=<u64>` | Read-only chain snapshot (optional `&rpc=`, `&embed=1`). |
 | `?view=simulate&p=<base64>`                    | Policy simulator share link.                             |
 

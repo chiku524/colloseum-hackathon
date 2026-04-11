@@ -11,8 +11,9 @@ This complements `docs/CREATOR-TREASURY-BUILD-PLAN.md` (Phase E widgets) with wh
 
 ## Public surfaces (no wallet)
 
-| Query | Purpose |
+| Path / query | Purpose |
 |--------|---------|
+| `/docs` (optional `?doc=<slug>`) | Read-only documentation hub: Markdown from `docs/` bundled into the static app at build time. |
 | `?view=status&team_lead=<pk>&project_id=<u64>` | Read project + proposals from chain. |
 | `&rpc=<https://…>` | Optional RPC override (also `VITE_RPC_URL` in the main bundle). |
 | `&embed=1` | Minimal chrome for iframes: hides the “URL parameters” explainer panel and tightens padding. |

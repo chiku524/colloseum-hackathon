@@ -4,7 +4,7 @@ import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
-import { StrictMode, useMemo, useRef } from 'react';
+import { lazy, StrictMode, Suspense, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AuthOnboardingGate } from './AuthOnboardingGate';
 import App from './App';
@@ -14,6 +14,8 @@ import { PublicStatus } from './PublicStatus';
 import './index.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import { StrongholdEmbeddedWalletAdapter } from './StrongholdEmbeddedWalletAdapter';
+
+const DocsPage = lazy(() => import('./DocsPage').then((m) => ({ default: m.DocsPage })));
 
 const network = WalletAdapterNetwork.Devnet;
 const endpoint = import.meta.env.VITE_RPC_URL ?? clusterApiUrl(network);
@@ -44,8 +46,10 @@ function Root() {
   );
 }
 
-function entryView(): 'main' | 'status' | 'simulate' {
+function entryView(): 'main' | 'status' | 'simulate' | 'docs' {
   if (typeof window === 'undefined') return 'main';
+  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  if (path === '/docs') return 'docs';
   const v = new URLSearchParams(window.location.search).get('view');
   if (v === 'status') return 'status';
   if (v === 'simulate') return 'simulate';
@@ -56,11 +60,33 @@ const view = entryView();
 
 if (typeof document !== 'undefined') {
   document.title =
-    view === 'status' ? DOCUMENT_TITLES.status : view === 'simulate' ? DOCUMENT_TITLES.simulate : DOCUMENT_TITLES.main;
+    view === 'status'
+      ? DOCUMENT_TITLES.status
+      : view === 'simulate'
+        ? DOCUMENT_TITLES.simulate
+        : view === 'docs'
+          ? DOCUMENT_TITLES.docs
+          : DOCUMENT_TITLES.main;
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {view === 'status' ? <PublicStatus /> : view === 'simulate' ? <PolicySimulatorShare /> : <Root />}
+    {view === 'status' ? (
+      <PublicStatus />
+    ) : view === 'simulate' ? (
+      <PolicySimulatorShare />
+    ) : view === 'docs' ? (
+      <Suspense
+        fallback={
+          <div className="app-shell" style={{ padding: '2rem' }}>
+            <p className="muted">Loading documentation…</p>
+          </div>
+        }
+      >
+        <DocsPage />
+      </Suspense>
+    ) : (
+      <Root />
+    )}
   </StrictMode>,
 );

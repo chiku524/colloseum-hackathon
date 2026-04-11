@@ -38,7 +38,7 @@ It is **not** a full accounting suite, payroll provider, or social platform. It 
 - **Vault** — A PDA tied to the project; holds vault state and uses an SPL **mint** and **vault token ATA** for custody.
 - **Policy** — Represented by a **hash** on-chain; the UI edits structured policy JSON and can **simulate** payouts before you commit changes on-chain.
 - **Release proposal** — A payout intent: amount, payee, timelock, status. Approvers sign; after timelock, **execute** performs the SPL transfer. Partial releases are supported (`released_so_far` / remaining cap).
-- **Split crank (optional automation)** — Team lead configures on-chain **recipients + bps + interval + max_per_tick**; anyone may call **`crank_automation`** after `next_eligible_ts` to move up to `min(vault, max_per_tick)` split by bps. Projects created before this feature may need **`upgrade_project_layout`** once (Setup tab). Vercel can call **`/api/cron/treasury-crank`** when env vars are set (see `apps/web/vercel.json` and `.env.example`). **Vercel Hobby** allows **at most one cron invocation per day** (this repo uses **12:00 UTC** daily); upgrade to Pro or use an external scheduler for higher frequency.
+- **Split crank (optional automation)** — Team lead configures on-chain **recipients + bps + interval + max_per_tick**; anyone may call `**crank_automation`** after `next_eligible_ts` to move up to `min(vault, max_per_tick)` split by bps. Projects created before this feature may need `**upgrade_project_layout**` once (Setup tab). Vercel can call `**/api/cron/treasury-crank**` when env vars are set (see `apps/web/vercel.json` and `.env.example`). **Vercel Hobby** allows **at most one cron invocation per day** (this repo uses **12:00 UTC** daily); upgrade to Pro or use an external scheduler for higher frequency.
 - **Disputes / artifacts** — Workflow hooks for accountability (see UI and program); treat **artifact URIs** and attestations as part of your operational process.
 
 ---
@@ -47,7 +47,8 @@ It is **not** a full accounting suite, payroll provider, or social platform. It 
 
 When you run `apps/web` (locally or on Vercel):
 
-- **Wallet connect** (Phantom, Solflare, etc.) against the configured **cluster** (devnet by default in code).
+- **In-app documentation** — open **`/docs`** for a browsable copy of the Markdown under `docs/` (bundled at build time). Use **`?doc=<filename-without-md>`** to deep-link, e.g. **`/docs?doc=ESSENTIALS`**.
+- **Wallet connect** (Phantom, Solflare, embedded email wallet when Supabase is configured) against the configured **cluster** (devnet by default in code).
 - **Project lifecycle**: initialize project, vault, mint (where applicable), deposit, policy editor + **simulator**, **release** propose → approve → execute.
 - **Audit**: export **JSON** and **CSV** for reconciliation and external tools.
 - **Shareable policy simulator link** (`?view=simulate&p=...`) — runs **only in the browser**; large policies may hit URL length limits.
@@ -85,7 +86,7 @@ The on-chain deployment **must** match this id (or you must redeploy clients wit
   - **Build-time**: `VITE_RPC_URL`, `VITE_PROGRAM_ID` (recommended explicit on Vercel).
   - **Runtime (API)**: `SOLANA_RPC_URL`, `TREASURY_API_SECRET`, `JWT_EMBED_SECRET` (≥16 chars), `WEBHOOK_SIGNING_SECRET` (for webhooks), optional `WEBHOOK_DELIVERY_URL`.
 3. Regenerate a paste-ready file: `npm run vercel:generate-env` → import `apps/web/.env.vercel.paste` in the Vercel UI (file is gitignored).
-4. **Redeploy** after changing `VITE_*` so the client bundle rebuilds.
+4. **Redeploy** after changing `VITE_`* so the client bundle rebuilds.
 
 ---
 
@@ -147,6 +148,7 @@ Full detail: `[SECURITY-AND-EMBED.md](./SECURITY-AND-EMBED.md)`.
 
 | Document                                                                 | Contents                                                                                |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| **In-app docs** (`/docs` on the web deployment)                          | Same guides as this folder, rendered in the UI; optional `?doc=SLUG` (slug = markdown filename without `.md`). |
 | `[CREATOR-TREASURY-BUILD-PLAN.md](./CREATOR-TREASURY-BUILD-PLAN.md)`     | Phased roadmap, architecture, future embeds.                                            |
 | `[DESIGN-AUTOMATED-DISBURSEMENT.md](./DESIGN-AUTOMATED-DISBURSEMENT.md)` | Feasibility of opt-in “set and forget” / scheduled payouts (no on-chain plain English). |
 | `[INVARIANTS-PHASE-A.md](./INVARIANTS-PHASE-A.md)`                       | On-chain invariants and non-goals.                                                      |
