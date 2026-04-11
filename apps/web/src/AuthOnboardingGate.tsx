@@ -24,6 +24,7 @@ function resetOnboardingProgress(): void {
     projectId: '0',
     approversText: '',
     threshold: '1',
+    pdaSeedOwner: '',
   });
 }
 
@@ -156,6 +157,7 @@ export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
       projectId: String(Math.floor(idNum)),
       approversText,
       threshold: String(th),
+      pdaSeedOwner: leadLine,
     };
     writeOnboarding(payload);
     dispatchOnboardingApplied(payload);

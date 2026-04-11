@@ -21,6 +21,8 @@ pub const AUTOMATION_MODE_NONE: u8 = 0;
 pub const AUTOMATION_MODE_SPLIT_CRANK: u8 = 1;
 /// `Project` body size before automation fields (Borsh, excludes 8-byte account discriminator).
 pub const PROJECT_LEGACY_BODY_LEN: usize = 315;
+/// `Project` serialized body size before `pending_team_lead` + `pda_seed_owner` (used in `upgrade_project_layout`).
+pub const PROJECT_LAYOUT_PRE_HANDOFF_LEN: usize = 614;
 
 #[program]
 pub mod creator_treasury {
@@ -82,6 +84,8 @@ pub mod creator_treasury {
         project.auto_recipient_count = 0;
         project.auto_recipients = [Pubkey::default(); MAX_AUTO_RECIPIENTS];
         project.auto_bps = [0u16; MAX_AUTO_RECIPIENTS];
+        project.pending_team_lead = Pubkey::default();
+        project.pda_seed_owner = ctx.accounts.team_lead.key();
 
         emit!(ProjectCreated {
             project: project.key(),
@@ -441,6 +445,82 @@ pub mod creator_treasury {
         Ok(())
     }
 
+    /// Current team lead invites `new_team_lead` (pubkey only). The invitee must call `accept_team_lead_transfer` while connected as that wallet.
+    pub fn begin_team_lead_transfer(
+        ctx: Context<BeginTeamLeadTransfer>,
+        new_team_lead: Pubkey,
+    ) -> Result<()> {
+        require!(
+            new_team_lead != Pubkey::default(),
+            ErrorCode::InvalidTransferTarget
+        );
+        let project = &mut ctx.accounts.project;
+        require!(
+            new_team_lead != project.team_lead,
+            ErrorCode::InvalidTransferTarget
+        );
+        require!(
+            project.pending_team_lead == Pubkey::default(),
+            ErrorCode::PendingTransferActive
+        );
+        require!(
+            project.approvers[0] == project.team_lead,
+            ErrorCode::LeadMustBeFirstApprover
+        );
+        for i in 1..project.approver_count as usize {
+            require!(
+                project.approvers[i] != new_team_lead,
+                ErrorCode::DuplicateApprover
+            );
+        }
+        project.pending_team_lead = new_team_lead;
+        emit!(TeamLeadTransferBegun {
+            project: project.key(),
+            from: project.team_lead,
+            to: new_team_lead,
+        });
+        Ok(())
+    }
+
+    /// New team lead accepts a pending transfer started by the current lead.
+    pub fn accept_team_lead_transfer(ctx: Context<AcceptTeamLeadTransfer>) -> Result<()> {
+        let project = &mut ctx.accounts.project;
+        let pending = project.pending_team_lead;
+        require!(pending != Pubkey::default(), ErrorCode::PendingTransferNone);
+        require!(
+            pending == ctx.accounts.new_team_lead.key(),
+            ErrorCode::PendingTransferMismatch
+        );
+        require!(
+            project.approvers[0] == project.team_lead,
+            ErrorCode::LeadMustBeFirstApprover
+        );
+        let old = project.team_lead;
+        project.team_lead = pending;
+        project.approvers[0] = pending;
+        project.pending_team_lead = Pubkey::default();
+        emit!(TeamLeadTransferred {
+            project: project.key(),
+            from: old,
+            to: pending,
+        });
+        Ok(())
+    }
+
+    /// Current team lead cancels a pending transfer.
+    pub fn cancel_team_lead_transfer(ctx: Context<CancelTeamLeadTransfer>) -> Result<()> {
+        let project = &mut ctx.accounts.project;
+        require!(
+            project.pending_team_lead != Pubkey::default(),
+            ErrorCode::PendingTransferNone
+        );
+        project.pending_team_lead = Pubkey::default();
+        emit!(TeamLeadTransferCancelled {
+            project: project.key(),
+        });
+        Ok(())
+    }
+
     /// Extends an older `Project` account to the current size (payer covers extra rent). Idempotent.
     pub fn upgrade_project_layout(ctx: Context<UpgradeProjectLayout>, project_id: u64) -> Result<()> {
         let acc = ctx.accounts.project.to_account_info();
@@ -485,6 +565,16 @@ pub mod creator_treasury {
             )?;
         }
         acc.realloc(target, true)?;
+        {
+            let mut data = acc.try_borrow_mut_data()?;
+            if data.len() >= 8 + Project::LEN {
+                let tl = Pubkey::try_from(&data[8..40]).map_err(|_| error!(ErrorCode::InvalidAccountData))?;
+                let pending_off = 8 + PROJECT_LAYOUT_PRE_HANDOFF_LEN;
+                let pda_seed_off = pending_off + 32;
+                data[pending_off..pda_seed_off].fill(0);
+                data[pda_seed_off..pda_seed_off + 32].copy_from_slice(tl.as_ref());
+            }
+        }
         Ok(())
     }
 
@@ -712,6 +802,10 @@ pub struct Project {
     pub auto_recipient_count: u8,
     pub auto_recipients: [Pubkey; MAX_AUTO_RECIPIENTS],
     pub auto_bps: [u16; MAX_AUTO_RECIPIENTS],
+    /// `Pubkey::default()` = none. Two-step handoff of operational team lead.
+    pub pending_team_lead: Pubkey,
+    /// Immutable pubkey used in the project PDA seeds (never changes after init / upgrade).
+    pub pda_seed_owner: Pubkey,
 }
 
 impl Project {
@@ -736,7 +830,9 @@ impl Project {
         + 8
         + 1
         + 32 * MAX_AUTO_RECIPIENTS
-        + 2 * MAX_AUTO_RECIPIENTS;
+        + 2 * MAX_AUTO_RECIPIENTS
+        + 32
+        + 32;
 }
 
 #[account]
@@ -823,7 +919,7 @@ pub struct InitializeVault<'info> {
     pub team_lead: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
         constraint = !project.vault_initialized @ ErrorCode::VaultAlreadyInitialized,
@@ -856,7 +952,7 @@ pub struct Deposit<'info> {
     pub depositor: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"project", project.team_lead.as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.vault_initialized @ ErrorCode::VaultNotInitialized,
     )]
@@ -890,7 +986,7 @@ pub struct ProposeRelease<'info> {
     pub team_lead: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
         constraint = project.vault_initialized @ ErrorCode::VaultNotInitialized,
@@ -913,7 +1009,7 @@ pub struct ProposeRelease<'info> {
 pub struct AttachProposalArtifact<'info> {
     pub team_lead: Signer<'info>,
     #[account(
-        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
     )]
@@ -932,7 +1028,7 @@ pub struct AttachProposalArtifact<'info> {
 pub struct OpenDispute<'info> {
     pub opener: Signer<'info>,
     #[account(
-        seeds = [b"project", project.team_lead.as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
     )]
     pub project: Account<'info, Project>,
@@ -950,7 +1046,7 @@ pub struct OpenDispute<'info> {
 pub struct ResolveDispute<'info> {
     pub team_lead: Signer<'info>,
     #[account(
-        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
     )]
@@ -969,7 +1065,7 @@ pub struct ResolveDispute<'info> {
 pub struct ApproveRelease<'info> {
     pub approver: Signer<'info>,
     #[account(
-        seeds = [b"project", project.team_lead.as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = !project.frozen @ ErrorCode::VaultFrozen,
     )]
@@ -988,7 +1084,7 @@ pub struct ApproveRelease<'info> {
 pub struct CancelProposal<'info> {
     pub team_lead: Signer<'info>,
     #[account(
-        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
     )]
@@ -1007,7 +1103,7 @@ pub struct CancelProposal<'info> {
 pub struct ExecuteRelease<'info> {
     pub executor: Signer<'info>,
     #[account(
-        seeds = [b"project", project.team_lead.as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
     )]
     pub project: Account<'info, Project>,
@@ -1041,7 +1137,7 @@ pub struct SetPolicy<'info> {
     pub team_lead: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
         constraint = !project.frozen @ ErrorCode::VaultFrozen,
@@ -1054,7 +1150,7 @@ pub struct SetFrozen<'info> {
     pub team_lead: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
     )]
@@ -1066,7 +1162,7 @@ pub struct SetRequireArtifact<'info> {
     pub team_lead: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
     )]
@@ -1089,7 +1185,7 @@ pub struct ConfigureAutomation<'info> {
     pub team_lead: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"project", team_lead.key().as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
         constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
         constraint = project.vault_initialized @ ErrorCode::VaultNotInitialized,
@@ -1102,7 +1198,7 @@ pub struct CrankAutomation<'info> {
     pub executor: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"project", project.team_lead.as_ref(), &project.project_id.to_le_bytes()],
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
         bump = project.bump,
     )]
     pub project: Account<'info, Project>,
@@ -1123,11 +1219,65 @@ pub struct CrankAutomation<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+pub struct BeginTeamLeadTransfer<'info> {
+    pub team_lead: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
+        bump = project.bump,
+        constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
+    )]
+    pub project: Account<'info, Project>,
+}
+
+#[derive(Accounts)]
+pub struct AcceptTeamLeadTransfer<'info> {
+    pub new_team_lead: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
+        bump = project.bump,
+    )]
+    pub project: Account<'info, Project>,
+}
+
+#[derive(Accounts)]
+pub struct CancelTeamLeadTransfer<'info> {
+    pub team_lead: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"project", project.pda_seed_owner.as_ref(), &project.project_id.to_le_bytes()],
+        bump = project.bump,
+        constraint = project.team_lead == team_lead.key() @ ErrorCode::Unauthorized,
+    )]
+    pub project: Account<'info, Project>,
+}
+
 #[event]
 pub struct ProjectCreated {
     pub project: Pubkey,
     pub team_lead: Pubkey,
     pub project_id: u64,
+}
+
+#[event]
+pub struct TeamLeadTransferBegun {
+    pub project: Pubkey,
+    pub from: Pubkey,
+    pub to: Pubkey,
+}
+
+#[event]
+pub struct TeamLeadTransferred {
+    pub project: Pubkey,
+    pub from: Pubkey,
+    pub to: Pubkey,
+}
+
+#[event]
+pub struct TeamLeadTransferCancelled {
+    pub project: Pubkey,
 }
 
 #[event]
@@ -1339,4 +1489,12 @@ pub enum ErrorCode {
     CrankNotYetEligible,
     #[msg("Remaining accounts must be one writable token account per automation recipient, in order")]
     InvalidAutomationRecipientAccounts,
+    #[msg("A team-lead transfer is already pending")]
+    PendingTransferActive,
+    #[msg("No pending team-lead transfer")]
+    PendingTransferNone,
+    #[msg("Signer does not match pending team lead")]
+    PendingTransferMismatch,
+    #[msg("Invalid team-lead transfer target")]
+    InvalidTransferTarget,
 }

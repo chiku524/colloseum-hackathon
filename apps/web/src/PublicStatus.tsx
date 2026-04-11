@@ -60,6 +60,7 @@ type LoadState =
       kind: 'ok';
       projectPda: string;
       teamLead: string;
+      pdaSeedOwner?: string;
       projectId: string;
       policyVersion: number;
       policyHashHex: string;
@@ -75,6 +76,7 @@ type LoadState =
 
 function readParams(): {
   teamLead: string;
+  pdaSeedOwner: string;
   projectId: string;
   rpc: string | null;
   token: string | null;
@@ -84,8 +86,11 @@ function readParams(): {
   parentOrigin: string | null;
 } {
   const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const pda = sp.get('pda_seed_owner') ?? sp.get('pdaSeedOwner') ?? '';
+  const tl = sp.get('team_lead') ?? sp.get('teamLead') ?? '';
   return {
-    teamLead: sp.get('team_lead') ?? sp.get('teamLead') ?? '',
+    teamLead: pda || tl,
+    pdaSeedOwner: pda,
     projectId: sp.get('project_id') ?? sp.get('projectId') ?? '',
     rpc: sp.get('rpc'),
     token: sp.get('token'),
@@ -133,7 +138,8 @@ export function PublicStatus() {
           });
           return;
         }
-        q.set('team_lead', p.teamLead.trim());
+        if (p.pdaSeedOwner.trim()) q.set('pda_seed_owner', p.pdaSeedOwner.trim());
+        else q.set('team_lead', p.teamLead.trim());
         q.set('project_id', p.projectId.trim());
         if (p.rpc?.trim()) q.set('rpc', p.rpc.trim());
       }
@@ -174,6 +180,7 @@ export function PublicStatus() {
             kind: 'ok',
             projectPda: data.projectPda as string,
             teamLead: data.teamLead as string,
+            pdaSeedOwner: typeof data.pdaSeedOwner === 'string' ? (data.pdaSeedOwner as string) : undefined,
             projectId: data.projectId as string,
             policyVersion: Number(data.policyVersion),
             policyHashHex: data.policyHashHex as string,
@@ -282,10 +289,15 @@ export function PublicStatus() {
         });
       }
 
+      const accRec = acc as Record<string, unknown>;
+      const pdaSeedPk = (accRec.pdaSeedOwner ?? accRec.pda_seed_owner) as PublicKey | undefined;
+      const pdaSeedResolved = pdaSeedPk ? pdaSeedPk.toBase58() : acc.teamLead.toBase58();
+
       setState({
         kind: 'ok',
         projectPda: projectPda.toBase58(),
         teamLead: acc.teamLead.toBase58(),
+        pdaSeedOwner: pdaSeedResolved,
         projectId: acc.projectId.toString(),
         policyVersion: acc.policyVersion as number,
         policyHashHex: hashHex,
@@ -446,14 +458,15 @@ export function PublicStatus() {
           <div className={displayParams.embed ? 'panel app-shell__embed-hide' : 'panel'}>
             <SectionHeader icon={<UxIconCode />} title="Link parameters (for builders)" />
             <p className="muted">
-              Point people here with <code>team_lead</code> (team lead wallet) and <code>project_id</code> (number). Optional:{' '}
-              <code>rpc</code> for a custom Solana URL, or <code>token</code> from <code>POST /api/v1/embed-token</code> instead
-              of showing wallets in the link. On Vercel we usually load through <code>/api/v1/project</code> first. Add{' '}
-              <code>embed=1&amp;compact=1</code> for a tiny iframe. With <code>embed=1</code>, <code>parent_origin</code> lets the
-              page message the parent site (see <code>/widget-manifest.json</code>).
+              Point people here with <code>project_id</code> and either <code>team_lead</code> or <code>pda_seed_owner</code>{' '}
+              (the pubkey used to derive the project PDA — usually the original creator). Optional: <code>rpc</code> for a
+              custom Solana URL, or <code>token</code> from <code>POST /api/v1/embed-token</code> instead of showing wallets in
+              the link. On Vercel we usually load through <code>/api/v1/project</code> first. Add <code>embed=1&amp;compact=1</code>{' '}
+              for a tiny iframe. With <code>embed=1</code>, <code>parent_origin</code> lets the page message the parent site (see{' '}
+              <code>/widget-manifest.json</code>).
             </p>
             <pre className="compact-block">
-              {`team_lead wallet: ${displayParams.teamLead || '(missing)'}
+              {`lookup wallet: ${displayParams.teamLead || '(missing)'}
 project number: ${displayParams.projectId || '(missing)'}
 embed token: ${displayParams.token ? '(present)' : '(none)'}
 network: ${defaultRpc}`}
@@ -481,6 +494,7 @@ network: ${defaultRpc}`}
                 <pre className="compact-block">
                   {`On-chain address: ${state.projectPda}
 Team lead wallet: ${shortAddr(state.teamLead, 8, 8)}
+PDA anchor (lookup): ${shortAddr(state.pdaSeedOwner ?? state.teamLead, 8, 8)}
 Project number: ${state.projectId}
 Rules version: ${state.policyVersion}
 Rules fingerprint: ${state.policyHashHex}

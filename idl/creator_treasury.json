@@ -178,6 +178,33 @@
       "args": [{ "name": "project_id", "type": "u64" }]
     },
     {
+      "name": "begin_team_lead_transfer",
+      "discriminator": [25, 88, 241, 178, 253, 177, 140, 8],
+      "accounts": [
+        { "name": "team_lead", "signer": true },
+        { "name": "project", "writable": true }
+      ],
+      "args": [{ "name": "new_team_lead", "type": "pubkey" }]
+    },
+    {
+      "name": "accept_team_lead_transfer",
+      "discriminator": [135, 136, 241, 59, 31, 241, 120, 18],
+      "accounts": [
+        { "name": "new_team_lead", "writable": true, "signer": true },
+        { "name": "project", "writable": true }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_team_lead_transfer",
+      "discriminator": [149, 14, 162, 92, 163, 144, 166, 195],
+      "accounts": [
+        { "name": "team_lead", "signer": true },
+        { "name": "project", "writable": true }
+      ],
+      "args": []
+    },
+    {
       "name": "configure_automation",
       "discriminator": [59, 207, 12, 35, 164, 110, 76, 150],
       "accounts": [
@@ -272,7 +299,11 @@
     { "code": 6046, "name": "AutomationNotActive", "msg": "Automation is not active on this project" },
     { "code": 6047, "name": "AutomationPaused", "msg": "Automation is paused" },
     { "code": 6048, "name": "CrankNotYetEligible", "msg": "Crank is not yet eligible (wait for next_eligible_ts)" },
-    { "code": 6049, "name": "InvalidAutomationRecipientAccounts", "msg": "Remaining accounts must be one writable token account per automation recipient, in order" }
+    { "code": 6049, "name": "InvalidAutomationRecipientAccounts", "msg": "Remaining accounts must be one writable token account per automation recipient, in order" },
+    { "code": 6050, "name": "PendingTransferActive", "msg": "A team-lead transfer is already pending" },
+    { "code": 6051, "name": "PendingTransferNone", "msg": "No pending team-lead transfer" },
+    { "code": 6052, "name": "PendingTransferMismatch", "msg": "Signer does not match pending team lead" },
+    { "code": 6053, "name": "InvalidTransferTarget", "msg": "Invalid team-lead transfer target" }
   ],
   "types": [
     {
@@ -301,7 +332,9 @@
           { "name": "automation_max_per_tick", "type": "u64" },
           { "name": "auto_recipient_count", "type": "u8" },
           { "name": "auto_recipients", "type": { "array": ["pubkey", 8] } },
-          { "name": "auto_bps", "type": { "array": ["u16", 8] } }
+          { "name": "auto_bps", "type": { "array": ["u16", 8] } },
+          { "name": "pending_team_lead", "type": "pubkey" },
+          { "name": "pda_seed_owner", "type": "pubkey" }
         ]
       }
     },

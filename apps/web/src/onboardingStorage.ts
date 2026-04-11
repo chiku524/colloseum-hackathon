@@ -7,6 +7,8 @@ export type OnboardingPayloadV1 = {
   projectId: string;
   approversText: string;
   threshold: string;
+  /** Pubkey used in project PDA seeds (usually the original creator); needed after team-lead handoff. */
+  pdaSeedOwner?: string;
 };
 
 export function readOnboarding(): OnboardingPayloadV1 | null {
@@ -30,6 +32,7 @@ export function writeOnboarding(p: Omit<OnboardingPayloadV1, 'v'> & { v?: 1 }): 
     projectId: p.projectId,
     approversText: p.approversText,
     threshold: p.threshold,
+    ...(p.pdaSeedOwner !== undefined ? { pdaSeedOwner: p.pdaSeedOwner } : {}),
   };
   try {
     window.localStorage.setItem(STRONGHOLD_ONBOARDING_KEY, JSON.stringify(full));

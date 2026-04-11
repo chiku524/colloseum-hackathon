@@ -1,4 +1,4 @@
-/** Maps creator-treasury Anchor error codes to plain-language UI copy (IDL 6000–6049). */
+/** Maps creator-treasury Anchor error codes to plain-language UI copy (IDL 6000–6053). */
 
 const BY_CODE: Record<number, string> = {
   6000: 'You can only list up to five people who can approve payouts.',
@@ -51,6 +51,10 @@ const BY_CODE: Record<number, string> = {
   6047: 'Automatic payouts are paused — unpause in Setup.',
   6048: 'It is not time for the next automatic run yet — wait and try again.',
   6049: 'Extra accounts for automation are missing or in the wrong order (one token account per recipient).',
+  6050: 'A team-lead handoff is already waiting — cancel it or have the invited wallet complete it.',
+  6051: 'No team-lead handoff is pending right now.',
+  6052: 'The connected wallet is not the one invited for the handoff — switch to the pending wallet.',
+  6053: 'That wallet cannot be used as the new team lead (invalid or already on the approver list).',
 };
 
 function tipForCode(code: number): string | undefined {
@@ -86,7 +90,7 @@ export function formatTxError(e: unknown): string {
   const hexMatch = raw.match(/custom program error:\s*(0x)?([0-9a-f]+)/i);
   if (hexMatch) {
     const code = parseInt(hexMatch[2], 16);
-    if (code >= 6000 && code <= 6050) {
+    if (code >= 6000 && code <= 6053) {
       const line = BY_CODE[code];
       if (line) {
         const tip = tipForCode(code);

@@ -24,6 +24,8 @@ export type AuditPackage = {
   programId: string;
   projectPda: string;
   teamLead: string;
+  /** Immutable pubkey in project PDA seeds (public links use this for lookup). */
+  pdaSeedOwner?: string;
   projectId: string;
   policyVersion: number;
   policyHashHex: string;

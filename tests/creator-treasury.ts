@@ -906,4 +906,56 @@ describe('creator_treasury (Phases A–D + artifact gate)', () => {
     assert.equal(afterA - midA, 500_000n);
     assert.equal(afterB - midB, 500_000n);
   });
+
+  it('team lead two-step handoff preserves project PDA', async () => {
+    const connection = provider.connection;
+    const nextLead = Keypair.generate();
+    const airdropSig = await connection.requestAirdrop(nextLead.publicKey, 2 * anchor.web3.LAMPORTS_PER_SOL);
+    const latest = await connection.getLatestBlockhash();
+    await connection.confirmTransaction({ signature: airdropSig, ...latest });
+
+    const projectId = new anchor.BN(991);
+    const [projectPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('project'),
+        payerKp.publicKey.toBuffer(),
+        projectId.toArrayLike(Buffer, 'le', 8),
+      ],
+      program.programId,
+    );
+
+    await program.methods
+      .initializeProject(projectId, Buffer.from('handoff'), [payerKp.publicKey], 1)
+      .accounts({
+        payer: payerKp.publicKey,
+        teamLead: payerKp.publicKey,
+        project: projectPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([payerKp])
+      .rpc();
+
+    await program.methods
+      .beginTeamLeadTransfer(nextLead.publicKey)
+      .accounts({
+        teamLead: payerKp.publicKey,
+        project: projectPda,
+      })
+      .signers([payerKp])
+      .rpc();
+
+    await program.methods
+      .acceptTeamLeadTransfer()
+      .accounts({
+        newTeamLead: nextLead.publicKey,
+        project: projectPda,
+      })
+      .signers([nextLead])
+      .rpc();
+
+    const proj = await program.account.project.fetch(projectPda);
+    assert.equal(proj.teamLead.toBase58(), nextLead.publicKey.toBase58());
+    const pdaSeed = (proj as unknown as { pdaSeedOwner: PublicKey }).pdaSeedOwner;
+    assert.equal(pdaSeed.toBase58(), payerKp.publicKey.toBase58());
+  });
 });

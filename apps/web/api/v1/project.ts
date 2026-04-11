@@ -24,11 +24,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   try {
     const token = typeof req.query.token === 'string' ? req.query.token : undefined;
+    const pdaSeedQ = typeof req.query.pda_seed_owner === 'string' ? req.query.pda_seed_owner : undefined;
     const teamLeadQ = typeof req.query.team_lead === 'string' ? req.query.team_lead : undefined;
     const projectIdQ = typeof req.query.project_id === 'string' ? req.query.project_id : undefined;
     const rpcQ = typeof req.query.rpc === 'string' ? req.query.rpc.trim() : undefined;
 
-    let teamLead = teamLeadQ?.trim();
+    let teamLead = pdaSeedQ?.trim() || teamLeadQ?.trim();
     let projectId = projectIdQ?.trim();
     let rpc = rpcQ || DEFAULT_RPC;
 
@@ -41,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       try {
         const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] });
         const pl = payload as Record<string, unknown>;
-        const tl = pl.team_lead ?? pl.teamLead;
+        const tl = pl.pda_seed_owner ?? pl.pdaSeedOwner ?? pl.team_lead ?? pl.teamLead;
         const pid = pl.project_id ?? pl.projectId;
         if (typeof tl !== 'string' || typeof pid !== 'string') {
           res.status(400).json({ error: 'Invalid embed token payload.' });
@@ -61,7 +62,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     if (!teamLead || !projectId) {
       res.status(400).json({
-        error: 'Provide team_lead and project_id query params, or a valid token (embed JWT).',
+        error:
+          'Provide project_id and team_lead (or pda_seed_owner — same value for lookup) query params, or a valid embed token.',
       });
       return;
     }

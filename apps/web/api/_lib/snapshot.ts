@@ -60,6 +60,8 @@ export type ProposalSnapshotJson = {
 export type ProjectSnapshotJson = {
   projectPda: string;
   teamLead: string;
+  /** Pubkey used in project PDA seeds (for links after team-lead handoff). */
+  pdaSeedOwner: string;
   projectId: string;
   policyVersion: number;
   policyHashHex: string;
@@ -73,12 +75,13 @@ export type ProjectSnapshotJson = {
   programId: string;
 };
 
+/** @param pdaSeedOwnerStr Pubkey used when deriving the project PDA (original creator if unchanged). */
 export async function buildProjectSnapshot(
-  teamLeadStr: string,
+  pdaSeedOwnerStr: string,
   projectIdStr: string,
   rpcUrl: string,
 ): Promise<ProjectSnapshotJson> {
-  const teamLeadPk = new PublicKey(teamLeadStr.trim());
+  const teamLeadPk = new PublicKey(pdaSeedOwnerStr.trim());
   const projectIdBn = BigInt(projectIdStr.trim());
   if (projectIdBn < 0n) throw new Error('project_id must be non-negative');
 
@@ -144,9 +147,14 @@ export async function buildProjectSnapshot(
     });
   }
 
+  const accRec = acc as Record<string, unknown>;
+  const pdaSeedPk = (accRec.pdaSeedOwner ?? accRec.pda_seed_owner) as PublicKey | undefined;
+  const pdaSeedResolved = pdaSeedPk ? pdaSeedPk.toBase58() : acc.teamLead.toBase58();
+
   return {
     projectPda: projectPda.toBase58(),
     teamLead: acc.teamLead.toBase58(),
+    pdaSeedOwner: pdaSeedResolved,
     projectId: acc.projectId.toString(),
     policyVersion: acc.policyVersion as number,
     policyHashHex: hashHex,

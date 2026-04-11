@@ -45,12 +45,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         : raw && typeof raw === 'object'
           ? (raw as Record<string, unknown>)
           : {};
-    const teamLead = (body.team_lead ?? body.teamLead) as string | undefined;
+    const teamLead = (body.pda_seed_owner ?? body.pdaSeedOwner ?? body.team_lead ?? body.teamLead) as
+      | string
+      | undefined;
     const projectId = (body.project_id ?? body.projectId) as string | undefined;
     const rpc = (body.rpc as string | undefined)?.trim();
 
     if (!teamLead?.trim() || !projectId?.trim()) {
-      res.status(400).json({ error: 'team_lead and project_id are required.' });
+      res.status(400).json({ error: 'team_lead (or pda_seed_owner) and project_id are required.' });
       return;
     }
 

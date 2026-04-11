@@ -83,6 +83,19 @@ function TabSectionFallback() {
 const idl = idlJson as Idl;
 const PROGRAM_ID = new PublicKey((idlJson as { address: string }).address);
 
+const STORAGE_PDA_SEED_OWNER = 'creator-treasury-pda-seed-owner';
+
+function readStoredPdaSeedOwner(): string {
+  if (typeof window === 'undefined') return '';
+  const fromOnb = readOnboarding()?.pdaSeedOwner?.trim();
+  if (fromOnb) return fromOnb;
+  try {
+    return window.localStorage.getItem(STORAGE_PDA_SEED_OWNER) ?? '';
+  } catch {
+    return '';
+  }
+}
+
 const STATUS_NAMES = ['Pending', 'Timelock', 'Executed', 'Cancelled'] as const;
 
 function statusLabel(code: number): string {
@@ -109,6 +122,10 @@ function parseHex32(s: string): number[] {
 function shortAddr(s: string, left = 4, right = 4): string {
   if (s.length <= left + right + 1) return s;
   return `${s.slice(0, left)}…${s.slice(-right)}`;
+}
+
+function isAllZeroPubkey(pk: PublicKey): boolean {
+  return pk.toBytes().every((b) => b === 0);
 }
 
 function isZeroArtifactSha256Hex(hex: string): boolean {
@@ -154,6 +171,8 @@ export default function App() {
   }, [provider]);
 
   const [projectIdStr, setProjectIdStr] = useState('0');
+  const [pdaSeedOwnerInput, setPdaSeedOwnerInput] = useState(readStoredPdaSeedOwner);
+  const [handoffDestination, setHandoffDestination] = useState('');
   const [policyText, setPolicyText] = useState('');
   const [baselineText, setBaselineText] = useState('');
   const [depositSim, setDepositSim] = useState('1000000');
@@ -175,6 +194,10 @@ export default function App() {
   const [onChain, setOnChain] = useState<{
     project: PublicKey;
     teamLead: string;
+    /** Immutable pubkey used in project PDA seeds (original creator unless upgraded). */
+    pdaSeedOwner: string;
+    /** Pending handoff target, if any. */
+    pendingTeamLead: string | null;
     onChainProjectId: string;
     policyVersion: number;
     policyHashHex: string;
@@ -211,6 +234,17 @@ export default function App() {
       return false;
     }
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const t = pdaSeedOwnerInput.trim();
+      if (t) window.localStorage.setItem(STORAGE_PDA_SEED_OWNER, t);
+      else window.localStorage.removeItem(STORAGE_PDA_SEED_OWNER);
+    } catch {
+      /* ignore */
+    }
+  }, [pdaSeedOwnerInput]);
 
   const [treasuryVisibility, setTreasuryVisibility] = useState<'private' | 'public'>(() => {
     if (typeof window === 'undefined') return 'private';
@@ -310,7 +344,32 @@ export default function App() {
 
   const projectLoaded = Boolean(onChain);
 
+  const projectSeedPublicKey = useMemo(() => {
+    const t = pdaSeedOwnerInput.trim();
+    if (t) {
+      try {
+        return new PublicKey(t);
+      } catch {
+        return null;
+      }
+    }
+    return wallet.publicKey;
+  }, [pdaSeedOwnerInput, wallet.publicKey]);
+
   const projectPda = useMemo(() => {
+    if (!projectSeedPublicKey) return null;
+    const id = Number(projectIdStr);
+    if (!Number.isFinite(id) || id < 0) return null;
+    const buf = Buffer.allocUnsafe(8);
+    buf.writeBigUInt64LE(BigInt(id), 0);
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from('project'), projectSeedPublicKey.toBuffer(), buf],
+      PROGRAM_ID,
+    )[0];
+  }, [projectSeedPublicKey, projectIdStr]);
+
+  /** PDA for *new* `initialize_project` — always uses the connected wallet as seed (Anchor init constraint). */
+  const createProjectPda = useMemo(() => {
     if (!wallet.publicKey) return null;
     const id = Number(projectIdStr);
     if (!Number.isFinite(id) || id < 0) return null;
@@ -333,7 +392,7 @@ export default function App() {
     const base = `${window.location.origin}${window.location.pathname}`;
     const params = new URLSearchParams({
       view: 'status',
-      team_lead: onChain.teamLead,
+      team_lead: onChain.pdaSeedOwner,
       project_id: onChain.onChainProjectId,
     });
     const rpc = import.meta.env.VITE_RPC_URL;
@@ -350,7 +409,7 @@ export default function App() {
     () =>
       onChain
         ? {
-            teamLead: onChain.teamLead,
+            teamLead: onChain.pdaSeedOwner,
             projectId: onChain.onChainProjectId,
             rpc: import.meta.env.VITE_RPC_URL,
           }
@@ -377,8 +436,8 @@ export default function App() {
   const loadOnChain = useCallback(async () => {
     setErr(null);
     setStatus(null);
-    if (!program || !projectPda || !wallet.publicKey) {
-      setErr('Connect your wallet and enter a valid project number.');
+    if (!program || !projectPda) {
+      setErr('Enter a valid project number and PDA anchor wallet (or connect your wallet and leave anchor blank).');
       return;
     }
     setBusy(true);
@@ -454,9 +513,18 @@ export default function App() {
       }
       setProposals(proposalRows);
 
+      const accRec = acc as Record<string, unknown>;
+      const pendingPk = (accRec.pendingTeamLead ?? accRec.pending_team_lead) as PublicKey | undefined;
+      const pdaSeedPk = (accRec.pdaSeedOwner ?? accRec.pda_seed_owner) as PublicKey | undefined;
+      const pdaSeedResolved = pdaSeedPk ? pdaSeedPk.toBase58() : acc.teamLead.toBase58();
+      const pendingStr =
+        pendingPk && !isAllZeroPubkey(pendingPk) ? pendingPk.toBase58() : null;
+
       setOnChain({
         project: projectPda,
         teamLead: acc.teamLead.toBase58(),
+        pdaSeedOwner: pdaSeedResolved,
+        pendingTeamLead: pendingStr,
         onChainProjectId: acc.projectId.toString(),
         policyVersion: acc.policyVersion as number,
         policyHashHex: hashHex,
@@ -470,13 +538,16 @@ export default function App() {
         frozen: Boolean(acc.frozen),
         requireArtifactForExecute: Boolean(acc.requireArtifactForExecute),
       });
+      if (!pdaSeedOwnerInput.trim()) {
+        setPdaSeedOwnerInput(pdaSeedResolved);
+      }
       pushToast('Project loaded.');
     } catch (e) {
       setErr(formatTxError(e));
     } finally {
       setBusy(false);
     }
-  }, [program, projectPda, wallet.publicKey, connection, pushToast]);
+  }, [program, projectPda, wallet.publicKey, connection, pushToast, pdaSeedOwnerInput]);
 
   const parsePolicy = (): TreasuryPolicy => {
     const raw = JSON.parse(policyText) as TreasuryPolicy;
@@ -741,7 +812,7 @@ export default function App() {
   const onCreateProject = async () => {
     setErr(null);
     setStatus(null);
-    if (!program || !wallet.publicKey || !projectPda) {
+    if (!program || !wallet.publicKey || !createProjectPda) {
       setErr('Connect your wallet and enter the same project number you use on Overview.');
       return;
     }
@@ -766,11 +837,12 @@ export default function App() {
         .accounts({
           payer: wallet.publicKey,
           teamLead: wallet.publicKey,
-          project: projectPda,
+          project: createProjectPda,
           systemProgram: SystemProgram.programId,
         })
         .rpc();
       setStatus(`Project created. Transaction: ${sig}`);
+      setPdaSeedOwnerInput(wallet.publicKey.toBase58());
       await loadOnChain();
     } catch (e) {
       setErr(formatTxError(e));
@@ -1125,6 +1197,106 @@ export default function App() {
     }
   };
 
+  const onBeginTeamLeadHandoff = async () => {
+    setErr(null);
+    setStatus(null);
+    if (!program || !wallet.publicKey || !onChain) {
+      setErr('Load your project first (Overview → Refresh data).');
+      return;
+    }
+    const dest = handoffDestination.trim();
+    if (!dest) {
+      setErr('Paste the new team lead’s Solana wallet address.');
+      return;
+    }
+    let destPk: PublicKey;
+    try {
+      destPk = new PublicKey(dest);
+    } catch {
+      setErr('That new team lead address does not look valid.');
+      return;
+    }
+    if (!(await guardBeforeSignTransaction())) return;
+    setBusy(true);
+    try {
+      const sig = await program.methods
+        .beginTeamLeadTransfer(destPk)
+        .accounts({
+          teamLead: wallet.publicKey,
+          project: onChain.project,
+        })
+        .rpc();
+      setStatus(`Handoff started — the new wallet must sign “Complete handoff”. Transaction: ${sig}`);
+      setHandoffDestination('');
+      await loadOnChain();
+    } catch (e) {
+      setErr(formatTxError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onAcceptTeamLeadHandoff = async () => {
+    setErr(null);
+    setStatus(null);
+    if (!program || !wallet.publicKey || !onChain) {
+      setErr('Load your project first (Overview → Refresh data).');
+      return;
+    }
+    if (!onChain.pendingTeamLead) {
+      setErr('There is no pending handoff for this project.');
+      return;
+    }
+    if (wallet.publicKey.toBase58() !== onChain.pendingTeamLead) {
+      setErr('Connect the wallet that was invited — it must match the pending address.');
+      return;
+    }
+    if (!(await guardBeforeSignTransaction())) return;
+    setBusy(true);
+    try {
+      const sig = await program.methods
+        .acceptTeamLeadTransfer()
+        .accounts({
+          newTeamLead: wallet.publicKey,
+          project: onChain.project,
+        })
+        .rpc();
+      setStatus(`You are now the team lead for this project. Transaction: ${sig}`);
+      await loadOnChain();
+    } catch (e) {
+      setErr(formatTxError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onCancelTeamLeadHandoff = async () => {
+    setErr(null);
+    setStatus(null);
+    if (!program || !wallet.publicKey || !onChain) return;
+    if (!onChain.pendingTeamLead) {
+      setErr('There is no pending handoff to cancel.');
+      return;
+    }
+    if (!(await guardBeforeSignTransaction())) return;
+    setBusy(true);
+    try {
+      const sig = await program.methods
+        .cancelTeamLeadTransfer()
+        .accounts({
+          teamLead: wallet.publicKey,
+          project: onChain.project,
+        })
+        .rpc();
+      setStatus(`Handoff cancelled. Transaction: ${sig}`);
+      await loadOnChain();
+    } catch (e) {
+      setErr(formatTxError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const AUTOMATION_MODE_NONE = 0;
   const AUTOMATION_MODE_SPLIT = 1;
 
@@ -1343,6 +1515,7 @@ export default function App() {
       programId: PROGRAM_ID.toBase58(),
       projectPda: onChain.project.toBase58(),
       teamLead: onChain.teamLead,
+      pdaSeedOwner: onChain.pdaSeedOwner,
       projectId: onChain.onChainProjectId,
       policyVersion: onChain.policyVersion,
       policyHashHex: onChain.policyHashHex,
@@ -1605,8 +1778,11 @@ export default function App() {
         <div className="panel">
           <SectionHeader icon={<UxIconOverview />} title="Your project" />
           <p className="muted">
-            Enter the <strong>project number</strong> you chose when you created the team. Your connected wallet must be
-            the team lead. Then load the latest info from Solana.
+            Enter the <strong>project number</strong>, then load from Solana. Lookup uses the <strong>PDA anchor wallet</strong>{' '}
+            below (defaults to your connected wallet — the creator when the project was first made). Email wallets work
+            the same as Phantom/Solflare; if a button stays greyed out, you usually still need to tap <strong>Refresh data</strong>{' '}
+            here first. After handing team lead to another wallet, keep the <strong>original</strong> creator address in
+            the anchor field so the app finds the same on-chain project.
           </p>
           <div className="field-row" data-tour="tour-overview-actions">
             <div className="field" style={{ flex: '0 0 7.5rem' }}>
@@ -1624,9 +1800,21 @@ export default function App() {
               {busy ? 'Loading…' : 'Refresh data'}
             </button>
           </div>
+          <div className="field" style={{ marginTop: '0.5rem' }}>
+            <label htmlFor="pda-seed">PDA anchor wallet (for lookup)</label>
+            <input
+              id="pda-seed"
+              type="text"
+              spellCheck={false}
+              value={pdaSeedOwnerInput}
+              onChange={(e) => setPdaSeedOwnerInput(e.target.value)}
+              placeholder="Leave blank to use your connected wallet"
+              aria-describedby="pid-hint"
+            />
+          </div>
           <p id="pid-hint" className="muted field-hint">
-            Must match the number you used under Setup. Amounts elsewhere are in the token’s smallest units (see field
-            hints).
+            Must match the number you used under Setup. The anchor wallet + number decide the on-chain project address.
+            Amounts elsewhere are in the token’s smallest units (see field hints).
           </p>
           <div data-tour="tour-overview-stats">
           {wallet.publicKey && !busy && !onChain ? (
@@ -1684,9 +1872,11 @@ export default function App() {
                 </div>
               </div>
               <pre className="data-block">
-                {`Team lead wallet: ${shortAddr(onChain.teamLead, 6, 6)}
-Full address: ${onChain.teamLead}
-Project number: ${onChain.onChainProjectId}
+                {`Team lead (operates payouts): ${shortAddr(onChain.teamLead, 6, 6)}
+Team lead full: ${onChain.teamLead}
+PDA anchor (lookup / links): ${shortAddr(onChain.pdaSeedOwner, 6, 6)}
+PDA anchor full: ${onChain.pdaSeedOwner}
+${onChain.pendingTeamLead ? `Pending handoff to: ${onChain.pendingTeamLead}\n` : ''}Project number: ${onChain.onChainProjectId}
 Rules fingerprint: ${onChain.policyHashHex}
 Delivery proof required to pay: ${onChain.requireArtifactForExecute ? 'yes' : 'no'}
 Token in vault: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}
@@ -1876,7 +2066,7 @@ Token full address: ${onChain.mint ?? '—'}`}
               How many approvers must sign before a payout can go out (between 1 and the number of wallets you listed).
             </p>
             <div className="btn-row">
-              <button type="button" disabled={busy || !program || !wallet.publicKey || !projectPda} onClick={onCreateProject}>
+              <button type="button" disabled={busy || !program || !wallet.publicKey || !createProjectPda} onClick={onCreateProject}>
                 Create project
               </button>
             </div>
@@ -1890,6 +2080,12 @@ Token full address: ${onChain.mint ?? '—'}`}
               move tokens from your wallet into the team vault; if your wallet does not have an account for that token yet,
               we create it for you.
             </p>
+            {!onChain ? (
+              <p className="muted">
+                Buttons stay disabled until the project is loaded — open <strong>Overview</strong> and tap{' '}
+                <strong>Refresh data</strong>. Email wallets work the same as browser wallets here.
+              </p>
+            ) : null}
             <div className="field">
               <label htmlFor="mint">Token mint address</label>
               <input
@@ -1977,6 +2173,59 @@ Token full address: ${onChain.mint ?? '—'}`}
                 onClick={() => onSetRequireArtifact(false)}
               >
                 Allow paying without proof
+              </button>
+            </div>
+          </div>
+
+          <div className="panel">
+            <SectionHeader icon={<UxIconPath />} title="Hand off team lead (different wallet)" />
+            <p className="muted">
+              Two steps so each wallet signs with its own key: the <strong>current</strong> team lead starts the handoff,
+              then the <strong>new</strong> wallet connects and completes it. The on-chain project address does not move;
+              public links keep using the <strong>PDA anchor</strong> from Overview.
+            </p>
+            {onChain?.pendingTeamLead ? (
+              <p className="muted">
+                Pending invite for: <code>{shortAddr(onChain.pendingTeamLead, 6, 6)}</code>
+              </p>
+            ) : (
+              <p className="muted">No handoff pending.</p>
+            )}
+            <div className="field">
+              <label htmlFor="handoff-to">New team lead wallet address</label>
+              <input
+                id="handoff-to"
+                type="text"
+                spellCheck={false}
+                value={handoffDestination}
+                onChange={(e) => setHandoffDestination(e.target.value)}
+                placeholder="Paste the Solana address that should become team lead"
+              />
+            </div>
+            <div className="btn-row">
+              <button
+                type="button"
+                className="ghost"
+                disabled={busy || !program || !wallet.publicKey || !onChain}
+                onClick={() => void onBeginTeamLeadHandoff()}
+              >
+                Start handoff (current lead)
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                disabled={busy || !program || !wallet.publicKey || !onChain}
+                onClick={() => void onAcceptTeamLeadHandoff()}
+              >
+                Complete handoff (pending wallet)
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                disabled={busy || !program || !wallet.publicKey || !onChain}
+                onClick={() => void onCancelTeamLeadHandoff()}
+              >
+                Cancel handoff (current lead)
               </button>
             </div>
           </div>
