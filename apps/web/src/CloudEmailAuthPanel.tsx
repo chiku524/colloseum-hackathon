@@ -245,12 +245,13 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
         setPendingVerificationEmail(addr || null);
         setInfoMsg('Check your email to confirm your address, then sign in here.');
         setPhase('verify_email');
+        setPassword('');
       } else if (data.user && data.session) {
         setPendingVerificationEmail(null);
         // Email confirmation disabled in Supabase: session exists immediately; onAuthStateChange will route.
         setInfoMsg('Signed in. Continue when the wallet step appears.');
+        // Keep password in state: create_keybag / unlock_keybag use it next; clearing here raced the UI and forced re-entry.
       }
-      setPassword('');
     } catch (e) {
       setAuthErr(formatAuthFlowError(e));
     } finally {
@@ -269,7 +270,9 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
-      setPassword('');
+      // Do not clear password: onAuthStateChange can switch to unlock_keybag before this promise resolves;
+      // clearing here emptied the field after the user was already on the unlock step (refresh + sign-in flows).
+      // Password is cleared after successful keybag unlock in onUnlockKeybag.
     } catch (e) {
       setAuthErr(formatAuthFlowError(e));
     } finally {
@@ -323,6 +326,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
     setAuthErr(null);
     setInfoMsg(null);
     setPendingVerificationEmail(null);
+    setPassword('');
     await supabase.auth.signOut();
     embeddedAdapter.setUnlockedKeypair(null);
   }, [embeddedAdapter, supabase]);
