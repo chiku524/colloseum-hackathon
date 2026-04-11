@@ -193,6 +193,12 @@ export default function App() {
     guardBeforeSignTransaction,
   } = useClusterTransactionGuard(connection, wallet);
 
+  const assertTxGuardOk = useCallback(async () => {
+    const g = await guardBeforeSignTransaction();
+    if (!g.ok && g.message) setErr(g.message);
+    return g.ok;
+  }, [guardBeforeSignTransaction]);
+
   const clearStatusLine = useCallback(() => {
     setStatus(null);
     setStatusTxSig(null);
@@ -666,7 +672,7 @@ export default function App() {
       setErr(formatTxError(e));
       return;
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const canon = canonicalPolicyJson(p);
@@ -721,7 +727,7 @@ export default function App() {
       return;
     }
     const propPda = proposalPdaFromId(onChain.project, pid);
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sha = parseHex32(artHex);
@@ -755,7 +761,7 @@ export default function App() {
     }
     const pid = Number(opsProposalId);
     const propPda = proposalPdaFromId(onChain.project, pid);
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -785,7 +791,7 @@ export default function App() {
     }
     const pid = Number(opsProposalId);
     const propPda = proposalPdaFromId(onChain.project, pid);
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -842,7 +848,7 @@ export default function App() {
       setErr('Approvals needed must be a whole number between 1 and how many approvers you listed.');
       return;
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const nameBuf = Buffer.from(initName.slice(0, 64), 'utf8');
@@ -880,7 +886,7 @@ export default function App() {
       setErr('That token address does not look valid. Paste the full mint address for the coin you want to hold.');
       return;
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const [vaultState] = PublicKey.findProgramAddressSync(
@@ -927,7 +933,7 @@ export default function App() {
       setErr(formatTxError(e));
       return;
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const mint = new PublicKey(onChain.mint);
@@ -995,7 +1001,7 @@ export default function App() {
     }
     const nextId = onChain.nextProposalId;
     const proposalPda = proposalPdaFromId(onChain.project, nextId);
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1028,7 +1034,7 @@ export default function App() {
       return;
     }
     const proposalPda = proposalPdaFromId(onChain.project, pid);
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1110,7 +1116,7 @@ export default function App() {
     );
     const vaultAta = getAssociatedTokenAddressSync(mint, vaultState, true);
     const proposalPda = proposalPdaFromId(onChain.project, pid);
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1145,7 +1151,7 @@ export default function App() {
       return;
     }
     const proposalPda = proposalPdaFromId(onChain.project, pid);
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1170,7 +1176,7 @@ export default function App() {
     setErr(null);
     clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) return;
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1194,7 +1200,7 @@ export default function App() {
     setErr(null);
     clearStatusLine();
     if (!program || !wallet.publicKey || !onChain) return;
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1235,7 +1241,7 @@ export default function App() {
       setErr('That new team lead address does not look valid.');
       return;
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1271,7 +1277,7 @@ export default function App() {
       setErr('Connect the wallet that was invited — it must match the pending address.');
       return;
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1299,7 +1305,7 @@ export default function App() {
       setErr('There is no pending handoff to cancel.');
       return;
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1334,7 +1340,7 @@ export default function App() {
       setErr('Enter a valid project number (0 or higher).');
       return;
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1431,7 +1437,7 @@ export default function App() {
     } else {
       nextBn = new BN(Math.floor(Date.now() / 1000));
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       const sig = await program.methods
@@ -1466,7 +1472,7 @@ export default function App() {
       setErr('Load your project and finish vault setup first.');
       return;
     }
-    if (!(await guardBeforeSignTransaction())) return;
+    if (!(await assertTxGuardOk())) return;
     setBusy(true);
     try {
       // @ts-expect-error IDL account namespace

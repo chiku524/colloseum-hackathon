@@ -99,5 +99,13 @@ export function formatTxError(e: unknown): string {
     }
   }
 
+  if (raw.includes('Attempt to debit an account but found no record of a prior credit')) {
+    return (
+      'This wallet has no SOL on this network yet (common for email wallets on Devnet). ' +
+      'The app requests test SOL automatically before signing when it can; if you still see this, fund the wallet at https://faucet.solana.com ' +
+      '(same cluster as this page).'
+    );
+  }
+
   return raw;
 }

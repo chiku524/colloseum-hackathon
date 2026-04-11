@@ -1,6 +1,7 @@
 import type { Connection } from '@solana/web3.js';
 import type { WalletContextState } from '@solana/wallet-adapter-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ensurePlaygroundSol } from './ensurePlaygroundSol';
 import {
   CLUSTER_LABELS,
   inferClusterFromGenesisHash,
@@ -8,6 +9,8 @@ import {
   type SolanaClusterId,
 } from './solanaCluster';
 import { inferClusterLabel } from './rpcCluster';
+
+export type TxGuardResult = { ok: true } | { ok: false; message?: string };
 
 export type ClusterGuardState = {
   rpcGenesisHash: string | null;
@@ -17,7 +20,7 @@ export type ClusterGuardState = {
   walletClusterUnknown: boolean;
   rpcClusterLabel: string;
   genesisError: string | null;
-  guardBeforeSignTransaction: () => Promise<boolean>;
+  guardBeforeSignTransaction: () => Promise<TxGuardResult>;
 };
 
 /**
@@ -68,37 +71,45 @@ export function useClusterTransactionGuard(
       ? CLUSTER_LABELS[rpcCluster]
       : inferClusterLabel(connection.rpcEndpoint);
 
-  const guardBeforeSignTransaction = useCallback(async (): Promise<boolean> => {
-    if (!wallet.publicKey) return true;
-    if (rpcCluster === 'unknown') return true;
+  const guardBeforeSignTransaction = useCallback(async (): Promise<TxGuardResult> => {
+    if (!wallet.publicKey) return { ok: true };
+    if (rpcCluster === 'unknown') return { ok: true };
 
     if (mismatch) {
-      return window.confirm(
+      const proceed = window.confirm(
         `Network check: this app is on ${CLUSTER_LABELS[rpcCluster]} (from your RPC), but your wallet reported ${CLUSTER_LABELS[walletCluster!]}. Transactions may fail or use the wrong network. Continue anyway?`,
       );
+      if (!proceed) return { ok: false };
     }
 
     if (walletClusterUnknown) {
+      let skipConfirm = false;
       try {
-        if (sessionStorage.getItem('ct-cluster-unknown-dismissed') === '1') return true;
+        skipConfirm = sessionStorage.getItem('ct-cluster-unknown-dismissed') === '1';
       } catch {
         /* ignore */
       }
-      const ok = window.confirm(
-        `We could not detect which Solana network your wallet is using. This app is on ${CLUSTER_LABELS[rpcCluster]}. If your wallet is on another network, signing will fail. Continue?`,
-      );
-      if (ok) {
+      if (!skipConfirm) {
+        const ok = window.confirm(
+          `We could not detect which Solana network your wallet is using. This app is on ${CLUSTER_LABELS[rpcCluster]}. If your wallet is on another network, signing will fail. Continue?`,
+        );
+        if (!ok) return { ok: false };
         try {
           sessionStorage.setItem('ct-cluster-unknown-dismissed', '1');
         } catch {
           /* ignore */
         }
       }
-      return ok;
     }
 
-    return true;
-  }, [wallet.publicKey, rpcCluster, mismatch, walletClusterUnknown, walletCluster]);
+    try {
+      await ensurePlaygroundSol(connection, wallet.publicKey, rpcCluster);
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    }
+
+    return { ok: true };
+  }, [connection, wallet.publicKey, rpcCluster, mismatch, walletClusterUnknown, walletCluster]);
 
   return {
     rpcGenesisHash,
