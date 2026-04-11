@@ -2642,21 +2642,73 @@ a:focus-visible {
   position: fixed;
   inset: 0;
   z-index: 2200;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 1rem;
-  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0));
-  background: color-mix(in srgb, var(--stone-deep) 78%, transparent);
-  backdrop-filter: blur(6px);
   overscroll-behavior: contain;
 }
 
+/* Welcome / no target: full dim + centered panel */
+.dashboard-tour-overlay--dimmed {
+  pointer-events: none;
+}
+
+.dashboard-tour-overlay--dimmed .dashboard-tour-dim-full {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--stone-deep) 78%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.dashboard-tour-overlay--dimmed .dashboard-tour-panel-wrap--center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0));
+  pointer-events: none;
+}
+
 @media (min-width: 640px) {
-  .dashboard-tour-overlay {
-    align-items: center;
+  .dashboard-tour-overlay--dimmed .dashboard-tour-panel-wrap--center {
     padding: 1.5rem;
   }
+}
+
+.dashboard-tour-overlay--dimmed .dashboard-tour-panel-wrap--center .dashboard-tour-panel {
+  pointer-events: auto;
+  width: min(420px, 100%);
+}
+
+/* Highlight steps: cutout around target + floating panel */
+.dashboard-tour-overlay--spotlight {
+  pointer-events: none;
+}
+
+.dashboard-tour-spotlight-hole {
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 80%, transparent),
+    0 0 0 100vmax color-mix(in srgb, var(--stone-deep) 76%, transparent);
+  transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-tour-spotlight-hole {
+    transition: none;
+  }
+}
+
+.dashboard-tour-overlay--spotlight .dashboard-tour-panel-wrap {
+  position: static;
+  pointer-events: none;
+}
+
+.dashboard-tour-overlay--spotlight .dashboard-tour-panel {
+  pointer-events: auto;
 }
 
 .dashboard-tour-panel {
