@@ -1,7 +1,7 @@
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { CloudEmailAuthPanel } from './CloudEmailAuthPanel';
 import { BRAND_NAME, BRAND_TAGLINE } from './brand';
 import { BrandMark } from './BrandMark';
@@ -14,7 +14,10 @@ import {
   type OnboardingPayloadV1,
 } from './onboardingStorage';
 import { getSupabaseBrowserClient, isSupabaseConfigured } from './supabase/client';
-import { type StrongholdEmbeddedWalletAdapter } from './StrongholdEmbeddedWalletAdapter';
+import {
+  STRONGHOLD_EMBEDDED_WALLET_NAME,
+  type StrongholdEmbeddedWalletAdapter,
+} from './StrongholdEmbeddedWalletAdapter';
 import { connectUnlockedEmbeddedWallet } from './wallet/connectUnlockedEmbeddedWallet';
 
 function resetOnboardingProgress(): void {
@@ -33,9 +36,47 @@ type Props = {
   embeddedAdapter: StrongholdEmbeddedWalletAdapter;
 };
 
+const WALLET_NAME_STORAGE_KEY = 'web3stronghold-wallet-name';
+
+function storedSelectionIsEmbeddedWallet(raw: string | null): boolean {
+  if (!raw) return false;
+  const label = String(STRONGHOLD_EMBEDDED_WALLET_NAME);
+  if (raw === label) return true;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed === label) return true;
+    if (typeof parsed === 'string' && parsed.includes('web3stronghold')) return true;
+  } catch {
+    if (raw.includes('web3stronghold')) return true;
+  }
+  return false;
+}
+
 export function AuthOnboardingGate({ children, embeddedAdapter }: Props) {
   const wallet = useWallet();
   const { publicKey, select, disconnect } = wallet;
+
+  /** Full page load: drop in-memory keypair and WalletProvider selection for the email wallet so refresh always starts disconnected. */
+  const didResetEmbeddedOnLoad = useRef(false);
+  useEffect(() => {
+    if (didResetEmbeddedOnLoad.current) return;
+    didResetEmbeddedOnLoad.current = true;
+    embeddedAdapter.setUnlockedKeypair(null);
+    const run = () => {
+      try {
+        if (typeof window === 'undefined') return;
+        const raw = window.localStorage.getItem(WALLET_NAME_STORAGE_KEY);
+        if (!storedSelectionIsEmbeddedWallet(raw)) return;
+        window.localStorage.removeItem(WALLET_NAME_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+      void disconnect();
+    };
+    queueMicrotask(run);
+    const id = window.setTimeout(run, 0);
+    return () => window.clearTimeout(id);
+  }, [disconnect, embeddedAdapter]);
 
   const [onboardingDone, setOnboardingDone] = useState(() => readOnboarding()?.complete ?? false);
   const [authMode, setAuthMode] = useState<'wallet' | 'email'>(() => {
