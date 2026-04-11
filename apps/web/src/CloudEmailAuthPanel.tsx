@@ -92,6 +92,11 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
   const [emailTab, setEmailTab] = useState<'sign-in' | 'register'>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  /** Latest auth-phase password for async auth routing (avoids stale closure). */
+  const passwordRef = useRef('');
+  passwordRef.current = password;
+  /** Separate from `password` so keybag unlock is not wiped when the unlock step mounts (browser autofill / remount quirks). */
+  const [keybagUnlockPassword, setKeybagUnlockPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [recoveryInput, setRecoveryInput] = useState('');
@@ -165,6 +170,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
         setKeybagRow(null);
         setMnemonicDraft('');
         setSavedMnemonicConfirm(false);
+        setKeybagUnlockPassword('');
         embeddedAdapter.setUnlockedKeypair(null);
         return;
       }
@@ -184,10 +190,14 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
           setSavedMnemonicConfirm(false);
           setPhase('create_keybag');
         } else {
+          const pw = passwordRef.current;
+          setKeybagUnlockPassword(pw);
+          setPassword('');
           setPhase('unlock_keybag');
         }
       } catch (e) {
         setAuthErr(e instanceof Error ? e.message : String(e));
+        setKeybagUnlockPassword('');
         setPhase('auth');
       }
     };
@@ -327,6 +337,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
     setInfoMsg(null);
     setPendingVerificationEmail(null);
     setPassword('');
+    setKeybagUnlockPassword('');
     await supabase.auth.signOut();
     embeddedAdapter.setUnlockedKeypair(null);
   }, [embeddedAdapter, supabase]);
@@ -348,11 +359,13 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
       const existing = await fetchKeybagForUser(supabase, session.user.id);
       if (existing) {
         setKeybagRow(existing);
+        const pw = passwordRef.current;
+        setKeybagUnlockPassword(pw);
+        setPassword('');
         setPhase('unlock_keybag');
         setInfoMsg(
           'A wallet is already linked to this account. Unlock with your account password (the one you use to sign in).',
         );
-        setPassword('');
         return;
       }
 
@@ -367,9 +380,11 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
           const row = await fetchKeybagForUser(supabase, session.user.id);
           if (row) {
             setKeybagRow(row);
+            const pw = passwordRef.current;
+            setKeybagUnlockPassword(pw);
+            setPassword('');
             setPhase('unlock_keybag');
             setInfoMsg('Your wallet was already saved. Unlock with your account password.');
-            setPassword('');
             return;
           }
         } catch (fetchErr) {
@@ -386,17 +401,22 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
   const onUnlockKeybag = useCallback(async () => {
     setAuthErr(null);
     if (!keybagRow) return;
+    if (!keybagUnlockPassword) {
+      setAuthErr('Enter your account password (the same one you use to sign in).');
+      return;
+    }
     setBusyAction('unlock');
     try {
-      const kp = await unlockKeypairFromKeybag(keybagRow, password);
+      const kp = await unlockKeypairFromKeybag(keybagRow, keybagUnlockPassword);
       await connectEmbedded(kp);
       setPassword('');
+      setKeybagUnlockPassword('');
     } catch (e) {
       setAuthErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusyAction(null);
     }
-  }, [connectEmbedded, keybagRow, password]);
+  }, [connectEmbedded, keybagRow, keybagUnlockPassword]);
 
   const onPasswordRecoveryComplete = useCallback(async () => {
     setAuthErr(null);
@@ -597,9 +617,10 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
             <span>Password</span>
             <input
               type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="keybag-unlock-password"
+              autoComplete="off"
+              value={keybagUnlockPassword}
+              onChange={(e) => setKeybagUnlockPassword(e.target.value)}
             />
           </label>
           {authErr ? <p className="auth-gate-err">{authErr}</p> : null}
@@ -628,6 +649,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
           onClick={() => {
             setAuthErr(null);
             setRecoveryInput('');
+            setPassword(keybagUnlockPassword);
             setPhase('recovery_rewrap');
           }}
         >
@@ -749,7 +771,14 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
             )}
           </button>
         </form>
-        <button type="button" className="ghost auth-gate-back" onClick={() => setPhase('unlock_keybag')}>
+        <button
+          type="button"
+          className="ghost auth-gate-back"
+          onClick={() => {
+            setKeybagUnlockPassword(password);
+            setPhase('unlock_keybag');
+          }}
+        >
           Back
         </button>
       </AuthAnimatedStep>
@@ -801,6 +830,7 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
           <span>Password</span>
           <input
             type="password"
+            name="supabase-auth-password"
             autoComplete={emailTab === 'register' ? 'new-password' : 'current-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
