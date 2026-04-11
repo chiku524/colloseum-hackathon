@@ -190,9 +190,14 @@ export function CloudEmailAuthPanel({ embeddedAdapter, select, disconnect }: Clo
           setSavedMnemonicConfirm(false);
           setPhase('create_keybag');
         } else {
-          const pw = passwordRef.current;
-          setKeybagUnlockPassword(pw);
-          setPassword('');
+          // Only copy auth → keybag unlock on fresh sign-in. INITIAL_SESSION / TOKEN_REFRESHED
+          // also hit this branch after refresh; re-copying from passwordRef (always '') wiped
+          // keybagUnlockPassword after the user had already typed it.
+          if (event === 'SIGNED_IN') {
+            const pw = passwordRef.current;
+            setKeybagUnlockPassword(pw);
+            setPassword('');
+          }
           setPhase('unlock_keybag');
         }
       } catch (e) {
