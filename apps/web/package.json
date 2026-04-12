@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "prebuild": "node scripts/copy-idl-to-api.mjs",
+    "dev": "node scripts/copy-docs-for-vite.mjs && vite",
+    "prebuild": "node scripts/copy-idl-to-api.mjs && node scripts/copy-docs-for-vite.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

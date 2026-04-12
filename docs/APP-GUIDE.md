@@ -160,6 +160,8 @@ When `VITE_PUBLIC_SUPABASE_*` (or `VITE_SUPABASE_*`) is set, the gate offers **e
 
 This app is a **Vite SPA**: routes like **`/docs`** are resolved in **`main.tsx`**, not as separate HTML files. On **Vercel**, the repo’s **`vercel.json`** includes a **catch-all rewrite** to **`index.html`** so direct navigation and refresh on `/docs` (and `/executive-summary`, etc.) return the app shell instead of a static **404**. Static files and **`/api/*`** still take precedence over that rewrite.
 
+The **`/docs`** Markdown files live under the monorepo **`docs/`** directory; **`prebuild`** / **`npm run dev`** copy them into **`apps/web/src/bundled-docs/`** so Vite can **bundle** them (production builds do not include `import.meta.glob` targets outside the `apps/web` root).
+
 ---
 
 ## 12. Further reading (by topic)

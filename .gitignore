@@ -10,6 +10,7 @@ test-ledger/
 dist/
 node_modules/
 apps/web/api/idl.json
+apps/web/src/bundled-docs/
 **/*.rs.bk
 supabase/.temp/
 .agents/

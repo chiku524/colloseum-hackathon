@@ -7,11 +7,51 @@ import { SiteFooter } from './SiteFooter';
 
 const GITHUB_TREE_MAIN = `${GITHUB_REPO_URL}/tree/main`;
 
-const rawDocModules = import.meta.glob('../../docs/*.md', {
+/** Populated by `scripts/copy-docs-for-vite.mjs` (runs before `vite` / `vite build`). */
+const rawDocModules = import.meta.glob('./bundled-docs/*.md', {
   eager: true,
   query: '?raw',
   import: 'default',
 }) as Record<string, string>;
+
+/** Sidebar order: essentials first, then by theme. Unknown files sort last by title. */
+const DOC_SIDEBAR_ORDER: readonly string[] = [
+  'ESSENTIALS',
+  'GETTING-STARTED',
+  'APP-GUIDE',
+  'SECURITY-AND-EMBED',
+  'HOST-WIDGET-INTEGRATION',
+  'SUPABASE-AUTH',
+  'SUPABASE-CUSTOM-SMTP',
+  'SUPABASE-SELF-HOSTED-EMAIL',
+  'CREATOR-TREASURY-BUILD-PLAN',
+  'INVARIANTS-PHASE-A',
+  'DESIGN-AUTOMATED-DISBURSEMENT',
+];
+
+/** Overview page: themed groups (subset of docs). */
+const DOC_HUB_SECTIONS: { title: string; blurb: string; docIds: readonly string[] }[] = [
+  {
+    title: 'Start here',
+    blurb: 'What the product is, how to run it locally, and a straight-line path through the dashboard.',
+    docIds: ['ESSENTIALS', 'GETTING-STARTED', 'APP-GUIDE'],
+  },
+  {
+    title: 'Security, API & sharing',
+    blurb: 'Auth secrets, read-only status links, embed JWTs, webhooks, and iframe / postMessage integration.',
+    docIds: ['SECURITY-AND-EMBED', 'HOST-WIDGET-INTEGRATION'],
+  },
+  {
+    title: 'Optional: email sign-in & mail',
+    blurb: 'Supabase-backed accounts, encrypted Solana keybags, SMTP setup and self-hosted mailpit notes.',
+    docIds: ['SUPABASE-AUTH', 'SUPABASE-CUSTOM-SMTP', 'SUPABASE-SELF-HOSTED-EMAIL'],
+  },
+  {
+    title: 'Architecture & on-chain rules',
+    blurb: 'Roadmap phases, payout automation design, and program invariants.',
+    docIds: ['CREATOR-TREASURY-BUILD-PLAN', 'DESIGN-AUTOMATED-DISBURSEMENT', 'INVARIANTS-PHASE-A'],
+  },
+];
 
 function docIdFromModulePath(modulePath: string): string {
   const base = modulePath.replace(/^.*[/\\]/, '');
@@ -41,6 +81,17 @@ function readDocQuery(): string | null {
   const raw = new URLSearchParams(window.location.search).get('doc');
   const t = raw?.trim();
   return t || null;
+}
+
+function sortDocEntries(list: DocEntry[]): DocEntry[] {
+  return [...list].sort((a, b) => {
+    const ia = DOC_SIDEBAR_ORDER.indexOf(a.id);
+    const ib = DOC_SIDEBAR_ORDER.indexOf(b.id);
+    const ra = ia === -1 ? 1000 : ia;
+    const rb = ib === -1 ? 1000 : ib;
+    if (ra !== rb) return ra - rb;
+    return a.title.localeCompare(b.title);
+  });
 }
 
 type MarkdownLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
@@ -108,9 +159,9 @@ export function DocsPage() {
       const id = docIdFromModulePath(path);
       return { id, title: titleFromMarkdown(content, id), content };
     });
-    list.sort((a, b) => a.title.localeCompare(b.title));
-    const byId = new Map(list.map((e) => [e.id, e]));
-    return { list, byId, ids: new Set(list.map((e) => e.id)) };
+    const sorted = sortDocEntries(list);
+    const byId = new Map(sorted.map((e) => [e.id, e]));
+    return { list: sorted, byId, ids: new Set(sorted.map((e) => e.id)) };
   }, []);
 
   const [activeId, setActiveId] = useState<string | null>(() => {
@@ -202,6 +253,16 @@ export function DocsPage() {
         </div>
       </header>
 
+      {catalog.list.length === 0 ? (
+        <div className="panel docs-empty" role="alert">
+          <h2 className="docs-index__title">No topics loaded</h2>
+          <p className="muted">
+            Markdown was not copied into <code>src/bundled-docs/</code> before this build. From <code>apps/web</code>, run{' '}
+            <code>node scripts/copy-docs-for-vite.mjs</code> once, or use <code>npm run dev</code> / <code>npm run build</code> (they run
+            the copy automatically).
+          </p>
+        </div>
+      ) : (
       <div className="docs-layout">
         <aside className="docs-layout__nav panel" aria-label="Documentation topics">
           <p className="docs-layout__nav-title">Topics</p>
@@ -243,12 +304,21 @@ export function DocsPage() {
             <div className="panel docs-index">
               <h2 className="docs-index__title">Docs overview</h2>
               <p className="muted">
-                These pages mirror the Markdown in <code>docs/</code> at build time. Use the sidebar to open a guide, or jump in below.
+                <strong>{BRAND_NAME}</strong> is a Solana <strong>creator team treasury</strong>: vault custody, policy hashing,
+                multi-approver payout requests with timelocks, optional split automation, audit export (JSON/CSV), read-only{' '}
+                <strong>status</strong> and <strong>policy simulator</strong> links, and an optional <strong>Vercel</strong> serverless API
+                (snapshot, embed JWT, webhooks). The topics below mirror the repo <code>docs/</code> folder — copied into the app before
+                each dev session or production build.
               </p>
+              <p className="muted">
+                Use the <strong>sidebar</strong> for every guide, or open <strong>Overview</strong> here for a curated map. Each page has
+                a <strong>View on GitHub</strong> link when you open a topic.
+              </p>
+
               <div className="docs-index__start" role="navigation" aria-label="Recommended reading order">
-                <h3 className="docs-index__start-title">Start here</h3>
+                <h3 className="docs-index__start-title">Recommended order</h3>
                 <ol className="docs-index__start-list">
-                  {(['ESSENTIALS', 'APP-GUIDE', 'SECURITY-AND-EMBED'] as const).flatMap((id) => {
+                  {(['ESSENTIALS', 'GETTING-STARTED', 'APP-GUIDE', 'SECURITY-AND-EMBED'] as const).flatMap((id) => {
                     const entry = catalog.byId.get(id);
                     if (!entry) return [];
                     return [
@@ -261,7 +331,33 @@ export function DocsPage() {
                   })}
                 </ol>
               </div>
-              <h3 className="docs-index__all-title">All topics</h3>
+
+              <div className="docs-hub-sections" aria-label="Documentation by theme">
+                {DOC_HUB_SECTIONS.map((section) => {
+                  const entries = section.docIds.flatMap((id) => {
+                    const e = catalog.byId.get(id);
+                    return e ? [e] : [];
+                  });
+                  if (entries.length === 0) return null;
+                  return (
+                    <section key={section.title} className="docs-hub-section">
+                      <h3 className="docs-hub-section__title">{section.title}</h3>
+                      <p className="docs-hub-section__blurb muted">{section.blurb}</p>
+                      <ul className="docs-hub-section__links">
+                        {entries.map((e) => (
+                          <li key={e.id}>
+                            <button type="button" className="docs-hub-section__link" onClick={() => onSelectDoc(e.id)}>
+                              {e.title}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  );
+                })}
+              </div>
+
+              <h3 className="docs-index__all-title">All topics (A–Z)</h3>
               <ul className="docs-index__cards">
                 {catalog.list.map((e) => (
                   <li key={e.id}>
@@ -276,6 +372,7 @@ export function DocsPage() {
           )}
         </main>
       </div>
+      )}
 
       <SiteFooter />
     </div>

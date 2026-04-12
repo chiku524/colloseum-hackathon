@@ -3001,6 +3001,70 @@ a:focus-visible {
   color: var(--muted);
 }
 
+.docs-empty {
+  margin-bottom: 1.5rem;
+  border-color: var(--danger);
+  background: rgba(240, 128, 128, 0.08);
+}
+
+.docs-hub-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 1.25rem 0 1.5rem;
+}
+
+.docs-hub-section {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.docs-hub-section__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.02rem;
+  font-weight: 650;
+}
+
+.docs-hub-section__blurb {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.docs-hub-section__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.docs-hub-section__link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.docs-hub-section__link:hover {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
 .docs-index__cards {
   list-style: none;
   margin: 1rem 0 0;

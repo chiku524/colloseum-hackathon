@@ -24,7 +24,7 @@ VITE_RPC_URL=https://api.devnet.solana.com
 npm run build
 ```
 
-`prebuild` runs `scripts/copy-idl-to-api.mjs` and writes `**api/idl.json**` (gitignored) so Vercel functions bundle a stable IDL.
+`prebuild` runs `scripts/copy-idl-to-api.mjs` and writes `**api/idl.json**` (gitignored) so Vercel functions bundle a stable IDL. It also runs **`scripts/copy-docs-for-vite.mjs`**, which copies the monorepo **`docs/*.md`** tree into `**src/bundled-docs/**` (gitignored) so the **`/docs`** page can bundle Markdown (Vite does not ship globs outside `apps/web` in production). The same copy runs at the start of **`npm run dev`**.
 
 ## Vercel
 
