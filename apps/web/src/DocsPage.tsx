@@ -29,6 +29,25 @@ const DOC_SIDEBAR_ORDER: readonly string[] = [
   'DESIGN-AUTOMATED-DISBURSEMENT',
 ];
 
+/** Short labels for the left Topics nav (full title stays on the page + `title` tooltip). */
+const DOC_TOPIC_SHORT_LABEL: Record<string, string> = {
+  ESSENTIALS: 'Essentials',
+  'GETTING-STARTED': 'Quick start',
+  'APP-GUIDE': 'App tour',
+  'SECURITY-AND-EMBED': 'Security',
+  'HOST-WIDGET-INTEGRATION': 'Embeds',
+  'SUPABASE-AUTH': 'Email wallet',
+  'SUPABASE-CUSTOM-SMTP': 'SMTP',
+  'SUPABASE-SELF-HOSTED-EMAIL': 'Mail stack',
+  'CREATOR-TREASURY-BUILD-PLAN': 'Roadmap',
+  'INVARIANTS-PHASE-A': 'On-chain',
+  'DESIGN-AUTOMATED-DISBURSEMENT': 'Auto splits',
+};
+
+function docTopicNavLabel(id: string): string {
+  return DOC_TOPIC_SHORT_LABEL[id] ?? id.replace(/-/g, ' ');
+}
+
 /** Overview page: themed groups (subset of docs). */
 const DOC_HUB_SECTIONS: { title: string; blurb: string; docIds: readonly string[] }[] = [
   {
@@ -278,8 +297,9 @@ export function DocsPage() {
                   type="button"
                   className={`docs-nav-item${e.id === activeId ? ' docs-nav-item--active' : ''}`}
                   onClick={() => onSelectDoc(e.id)}
+                  title={e.title}
                 >
-                  {e.title}
+                  {docTopicNavLabel(e.id)}
                 </button>
               </li>
             ))}
