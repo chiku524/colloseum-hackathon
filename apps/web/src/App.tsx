@@ -46,7 +46,9 @@ import { CLUSTER_LABELS } from './solanaCluster';
 import { useClusterTransactionGuard } from './useClusterTransactionGuard';
 import { SiteFooter } from './SiteFooter';
 import { ToastStack, useToast } from './ToastStack';
+import { ProposalLifecycleSimulator } from './ProposalLifecycleSimulator';
 import { TxSignatureBlock } from './TxSignatureBlock';
+import { TreasurySparkline } from './TreasurySparkline';
 import { UxAccordion } from './UxAccordion';
 import {
   SectionHeader,
@@ -223,6 +225,8 @@ export default function App() {
     mint?: string;
     /** First `approver_count` entries — used to gate treasury analytics. */
     approverPubkeys: string[];
+    /** How many distinct approver signatures are required per payout request. */
+    approvalThreshold: number;
     nextProposalId: number;
     frozen: boolean;
     requireArtifactForExecute: boolean;
@@ -239,6 +243,8 @@ export default function App() {
   const [csvText, setCsvText] = useState('');
   const [showAdvancedPolicy, setShowAdvancedPolicy] = useState(false);
   const [tab, setTab] = useState<'overview' | 'treasury' | 'setup' | 'policy' | 'ledger' | 'widgets'>('overview');
+  const [lifecycleOpen, setLifecycleOpen] = useState(false);
+  const [dashSimResult, setDashSimResult] = useState<string | null>(null);
   const [dashboardTourOpen, setDashboardTourOpen] = useState(false);
   const [quickPathDismissed, setQuickPathDismissed] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -547,6 +553,7 @@ export default function App() {
         vaultDecimals,
         mint,
         approverPubkeys,
+        approvalThreshold: Number(acc.approvalThreshold),
         nextProposalId: nextProp,
         frozen: Boolean(acc.frozen),
         requireArtifactForExecute: Boolean(acc.requireArtifactForExecute),
@@ -620,6 +627,29 @@ export default function App() {
         `Practice run (smallest units):\nHold back: ${holdback}\n${rows}\nLeft over in the vault after splits: ${remainder}`,
       );
       setStatusTxSig(null);
+    } catch (e) {
+      setErr(formatTxError(e));
+    }
+  };
+
+  const onDashSimulate = () => {
+    setErr(null);
+    setDashSimResult(null);
+    try {
+      const p = parsePolicy();
+      const v = validatePolicy(p);
+      if (v) {
+        setErr(v);
+        return;
+      }
+      const atoms = BigInt(depositSim);
+      if (atoms <= 0n) {
+        setErr('Enter a sample deposit greater than zero (smallest units of the token).');
+        return;
+      }
+      const { lines, holdback, remainder } = simulatePayout(atoms, p);
+      const rows = lines.map((l) => `${l.payee}: ${l.amount.toString()}`).join('\n');
+      setDashSimResult(`Hold back: ${holdback}\n${rows}\nLeft in vault after splits: ${remainder}`);
     } catch (e) {
       setErr(formatTxError(e));
     }
@@ -1588,47 +1618,27 @@ export default function App() {
           <div>
             <h1>{BRAND_NAME}</h1>
             <p className="tagline">{BRAND_TAGLINE}</p>
-            {wallet.publicKey ? (
-              <div className="app-header__aux-links" role="group" aria-label="Help and guided tour">
-                <button
-                  type="button"
-                  className="app-header__tour-btn"
-                  onClick={() => setDashboardTourOpen(true)}
-                  aria-label="Open guided app tour"
-                >
-                  App tour
-                </button>
-                <span className="app-header__aux-sep" aria-hidden>
-                  ·
-                </span>
-                <button
-                  type="button"
-                  className="app-header__tour-btn"
-                  onClick={resetAndOpenDashboardTour}
-                  aria-label="Reset guided tour and open from step 1"
-                >
-                  Reset tour
-                </button>
-                {quickPathDismissed ? (
-                  <>
-                    <span className="app-header__aux-sep" aria-hidden>
-                      ·
-                    </span>
-                    <button
-                      type="button"
-                      className="app-header__tour-btn"
-                      onClick={showQuickPath}
-                      aria-label="Show quick path checklist"
-                    >
-                      Quick path
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
           </div>
         </div>
         <div className="app-header__wallet" data-tour="tour-wallet">
+          {wallet.publicKey ? (
+            <details className="app-header__help">
+              <summary className="app-header__help-summary">Help</summary>
+              <div className="app-header__help-menu" role="group" aria-label="Help and guided tour">
+                <button type="button" className="app-header__help-item" onClick={() => setDashboardTourOpen(true)}>
+                  App tour
+                </button>
+                <button type="button" className="app-header__help-item" onClick={resetAndOpenDashboardTour}>
+                  Reset tour
+                </button>
+                {quickPathDismissed ? (
+                  <button type="button" className="app-header__help-item" onClick={showQuickPath}>
+                    Quick path
+                  </button>
+                ) : null}
+              </div>
+            </details>
+          ) : null}
           <span className="rpc-cluster-badge" title={connection.rpcEndpoint}>
             {inferClusterLabel(connection.rpcEndpoint)}
           </span>
@@ -1724,27 +1734,29 @@ export default function App() {
         </section>
       ) : null}
 
-      <div className="tabs-mobile-wrap">
-        <label htmlFor="main-section-select" className="sr-only">
-          Main section
-        </label>
-        <select
-          id="main-section-select"
-          className="tabs-mobile-select"
-          value={tab}
-          onChange={(e) => setTab(e.target.value as typeof tab)}
-          aria-label="Main section"
-        >
-          <option value="overview">Overview</option>
-          <option value="treasury">Treasury</option>
-          <option value="setup">Setup</option>
-          <option value="policy">Policy</option>
-          <option value="ledger">Proposals</option>
-          <option value="widgets">Share</option>
-        </select>
-      </div>
+      <div className="app-body">
+        <div className="app-body__nav">
+          <div className="tabs-mobile-wrap">
+            <label htmlFor="main-section-select" className="sr-only">
+              Main section
+            </label>
+            <select
+              id="main-section-select"
+              className="tabs-mobile-select"
+              value={tab}
+              onChange={(e) => setTab(e.target.value as typeof tab)}
+              aria-label="Main section"
+            >
+              <option value="overview">Overview</option>
+              <option value="treasury">Treasury</option>
+              <option value="setup">Setup</option>
+              <option value="policy">Policy</option>
+              <option value="ledger">Proposals</option>
+              <option value="widgets">Share</option>
+            </select>
+          </div>
 
-      <nav className="tabs tabs--scroll" role="tablist" aria-label="Main sections" data-tour="tour-tabs">
+          <nav className="tabs tabs--scroll" role="tablist" aria-label="Main sections" data-tour="tour-tabs">
         <button type="button" role="tab" aria-selected={tab === 'overview'} onClick={() => setTab('overview')}>
           <span className="tab-btn__glyph" aria-hidden>
             <UxIconOverview />
@@ -1822,129 +1834,212 @@ export default function App() {
             ) : null}
           </span>
         </button>
-      </nav>
+          </nav>
+        </div>
 
+        <div className="app-body__content">
       {tab === 'overview' && (
-        <div className="panel">
-          <SectionHeader icon={<UxIconOverview />} title="Your project" />
-          <p className="muted">
-            Enter the <strong>project number</strong>, then load from Solana. Lookup uses the <strong>PDA anchor wallet</strong>{' '}
-            below (defaults to your connected wallet — the creator when the project was first made). Email wallets work
-            the same as Phantom/Solflare; if a button stays greyed out, you usually still need to tap <strong>Refresh data</strong>{' '}
-            here first. After handing team lead to another wallet, keep the <strong>original</strong> creator address in
-            the anchor field so the app finds the same on-chain project.
-          </p>
-          <div className="field-row" data-tour="tour-overview-actions">
-            <div className="field" style={{ flex: '0 0 7.5rem' }}>
-              <label htmlFor="pid">Project number</label>
-              <input
-                id="pid"
-                type="number"
-                min={0}
-                value={projectIdStr}
-                onChange={(e) => setProjectIdStr(e.target.value)}
-                aria-describedby="pid-hint"
-              />
-            </div>
-            <button
-              type="button"
-              className="ghost"
-              disabled={busy || !program || !projectPda}
-              onClick={() => {
-                clearStatusLine();
-                void loadOnChain();
-              }}
-            >
-              {busy ? 'Loading…' : 'Refresh data'}
-            </button>
-          </div>
-          <div className="field" style={{ marginTop: '0.5rem' }}>
-            <label htmlFor="pda-seed">PDA anchor wallet (for lookup)</label>
-            <input
-              id="pda-seed"
-              type="text"
-              spellCheck={false}
-              value={pdaSeedOwnerInput}
-              onChange={(e) => setPdaSeedOwnerInput(e.target.value)}
-              placeholder="Leave blank to use your connected wallet"
-              aria-describedby="pid-hint"
-            />
-          </div>
-          <p id="pid-hint" className="muted field-hint">
-            Must match the number you used under Setup. The anchor wallet + number decide the on-chain project address.
-            Amounts elsewhere are in the token’s smallest units (see field hints).
-          </p>
-          <div data-tour="tour-overview-stats">
-          {wallet.publicKey && !busy && !onChain ? (
-            <div className="ux-empty-hint" role="status">
-              <div className="ux-empty-hint__art" aria-hidden>
-                <UxIconVault />
+        <>
+          <div className="panel dash-overview">
+            <div className="dash-overview__head">
+              <h2 className="dash-overview__eyebrow">Treasury overview</h2>
+              <div className="dash-overview__actions">
+                {onChain ? (
+                  <button type="button" className="ghost dash-overview__lifecycle" onClick={() => setLifecycleOpen(true)}>
+                    Proposal lifecycle
+                  </button>
+                ) : null}
               </div>
-              <p>
-                Tap <strong>Refresh data</strong> to load your vault balance, rules version, and payout requests from
-                Solana.
+            </div>
+
+            <details className="dash-connect" data-tour="tour-overview-actions">
+              <summary className="dash-connect__summary">Project connection</summary>
+              <p className="muted dash-connect__lede">
+                Enter your <strong>project number</strong> and load from Solana. The PDA anchor defaults to your connected
+                wallet (the original creator for lookup).
               </p>
-            </div>
-          ) : null}
-          {busy && !onChain ? (
-            <div className="ux-overview-skeleton" aria-busy="true" aria-label="Loading project data">
-              <div className="ux-sk-grid">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="ux-sk ux-sk--tile" />
-                ))}
+              <div className="field-row">
+                <div className="field" style={{ flex: '0 0 7.5rem' }}>
+                  <label htmlFor="pid">Project number</label>
+                  <input
+                    id="pid"
+                    type="number"
+                    min={0}
+                    value={projectIdStr}
+                    onChange={(e) => setProjectIdStr(e.target.value)}
+                    aria-describedby="pid-hint"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={busy || !program || !projectPda}
+                  onClick={() => {
+                    clearStatusLine();
+                    void loadOnChain();
+                  }}
+                >
+                  {busy ? 'Loading…' : 'Refresh data'}
+                </button>
               </div>
-              <div className="ux-sk ux-sk--bar ux-sk--bar-lg" style={{ marginTop: '0.75rem' }} />
-            </div>
-          ) : null}
-          {projectPda && (
-            <p className="muted">
-              On-chain project address: <code>{projectPda.toBase58()}</code>
-            </p>
-          )}
-          {onChain && (
-            <>
-              <div className="stat-grid">
-                <div className="stat" data-accent="sky">
-                  <div className="stat-label">Rules version</div>
-                  <div className="stat-value">{onChain.policyVersion}</div>
-                </div>
-                <div className="stat" data-accent="mint">
-                  <div className="stat-label">Next payout #</div>
-                  <div className="stat-value">{onChain.nextProposalId}</div>
-                </div>
-                <div className="stat" data-accent="amber">
-                  <div className="stat-label">Vault ready</div>
-                  <div className="stat-value">{onChain.vaultInitialized ? 'Yes' : 'Not yet'}</div>
-                </div>
-                <div className="stat" data-accent="sky">
-                  <div className="stat-label">Vault balance</div>
-                  <div className="stat-value">{onChain.vaultBalance ?? '—'}</div>
-                </div>
-                <div className="stat" data-accent="rose">
-                  <div className="stat-label">Payouts paused</div>
-                  <div className="stat-value">{onChain.frozen ? 'Yes' : 'No'}</div>
-                </div>
-                <div className="stat" data-accent="mint">
-                  <div className="stat-label">Proof before pay</div>
-                  <div className="stat-value">{onChain.requireArtifactForExecute ? 'Required' : 'Off'}</div>
-                </div>
+              <div className="field" style={{ marginTop: '0.5rem' }}>
+                <label htmlFor="pda-seed">PDA anchor wallet (for lookup)</label>
+                <input
+                  id="pda-seed"
+                  type="text"
+                  spellCheck={false}
+                  value={pdaSeedOwnerInput}
+                  onChange={(e) => setPdaSeedOwnerInput(e.target.value)}
+                  placeholder="Leave blank to use your connected wallet"
+                  aria-describedby="pid-hint"
+                />
               </div>
-              <pre className="data-block">
-                {`Team lead (operates payouts): ${shortAddr(onChain.teamLead, 6, 6)}
-Team lead full: ${onChain.teamLead}
-PDA anchor (lookup / links): ${shortAddr(onChain.pdaSeedOwner, 6, 6)}
-PDA anchor full: ${onChain.pdaSeedOwner}
-${onChain.pendingTeamLead ? `Pending handoff to: ${onChain.pendingTeamLead}\n` : ''}Project number: ${onChain.onChainProjectId}
-Rules fingerprint: ${onChain.policyHashHex}
-Delivery proof required to pay: ${onChain.requireArtifactForExecute ? 'yes' : 'no'}
-Token in vault: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}
-Token full address: ${onChain.mint ?? '—'}`}
-              </pre>
-              <p className="muted" style={{ marginTop: '0.75rem' }}>
-                Share a <strong>read-only</strong> view (no wallet needed): anyone with the link can see balances and
-                status.
+              <p id="pid-hint" className="muted field-hint">
+                The anchor wallet and project number determine the on-chain project address. Amounts elsewhere use the
+                token’s smallest units.
               </p>
-              <div className="btn-row">
+            </details>
+
+            <div data-tour="tour-overview-stats">
+              {wallet.publicKey && !busy && !onChain ? (
+                <div className="ux-empty-hint" role="status">
+                  <div className="ux-empty-hint__art" aria-hidden>
+                    <UxIconVault />
+                  </div>
+                  <p>
+                    Open <strong>Project connection</strong> above, then tap <strong>Refresh data</strong> to load the vault
+                    and payout queue.
+                  </p>
+                </div>
+              ) : null}
+              {busy && !onChain ? (
+                <div className="ux-overview-skeleton" aria-busy="true" aria-label="Loading project data">
+                  <div className="ux-sk-grid">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="ux-sk ux-sk--tile" />
+                    ))}
+                  </div>
+                  <div className="ux-sk ux-sk--bar ux-sk--bar-lg" style={{ marginTop: '0.75rem' }} />
+                </div>
+              ) : null}
+
+              {onChain ? (
+                <>
+                  <div className="dash-grid">
+                    <div className="dash-card dash-card--hero">
+                      <div className="dash-card__label">Vault balance</div>
+                      <div className="dash-card__value">{onChain.vaultBalance ?? '—'}</div>
+                      <TreasurySparkline seed={onChain.vaultAmountRaw ?? onChain.vaultBalance ?? '0'} />
+                      <button
+                        type="button"
+                        className="ghost dash-card__refresh"
+                        disabled={busy || !program || !projectPda}
+                        onClick={() => {
+                          clearStatusLine();
+                          void loadOnChain();
+                        }}
+                      >
+                        {busy ? 'Refreshing…' : 'Refresh'}
+                      </button>
+                    </div>
+                    <div className="dash-card dash-card--metrics">
+                      <div className="dash-metric">
+                        <span className="dash-metric__label">Rules</span>
+                        <span className="dash-metric__value">v{onChain.policyVersion}</span>
+                      </div>
+                      <div className="dash-metric">
+                        <span className="dash-metric__label">Next payout #</span>
+                        <span className="dash-metric__value">{onChain.nextProposalId}</span>
+                      </div>
+                      <div className="dash-metric">
+                        <span className="dash-metric__label">Quorum</span>
+                        <span className="dash-metric__value">
+                          {onChain.approvalThreshold} / {onChain.approverPubkeys.length}
+                        </span>
+                      </div>
+                      <div className="dash-metric">
+                        <span className="dash-metric__label">Vault</span>
+                        <span className="dash-metric__value">{onChain.vaultInitialized ? 'Ready' : 'Setup'}</span>
+                      </div>
+                      <div className="dash-metric">
+                        <span className="dash-metric__label">Paused</span>
+                        <span className="dash-metric__value">{onChain.frozen ? 'Yes' : 'No'}</span>
+                      </div>
+                      <div className="dash-metric">
+                        <span className="dash-metric__label">Proof gate</span>
+                        <span className="dash-metric__value">{onChain.requireArtifactForExecute ? 'On' : 'Off'}</span>
+                      </div>
+                    </div>
+                    <div className="dash-card dash-card--activity">
+                      <div className="dash-card__label">Recent activity</div>
+                      {proposals.length === 0 ? (
+                        <p className="muted dash-card__empty">No payout requests yet.</p>
+                      ) : (
+                        <ul className="dash-activity-list">
+                          {[...proposals].reverse().slice(0, 6).map((p) => (
+                            <li key={p.proposalId} className="dash-activity-list__item">
+                              <span className={`dash-activity-list__badge ${badgeClassForStatus(p.statusCode)}`}>
+                                {p.status}
+                              </span>
+                              <div className="dash-activity-list__body">
+                                <span className="dash-activity-list__main">#{p.proposalId}</span>
+                                <span className="dash-activity-list__meta muted">
+                                  → {shortAddr(p.recipient)} · cap {p.amount}
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <button
+                        type="button"
+                        className="ghost dash-card__more"
+                        onClick={() => setTab('ledger')}
+                      >
+                        Open proposals
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="dash-policy-row" aria-label="Policy fingerprint">
+                    <span className="dash-policy-row__icon" aria-hidden>
+                      🔒
+                    </span>
+                    <span className="dash-policy-row__label">Policy</span>
+                    <code className="dash-policy-row__hash">
+                      {onChain.policyHashHex.length > 20
+                        ? `${onChain.policyHashHex.slice(0, 10)}…${onChain.policyHashHex.slice(-8)}`
+                        : onChain.policyHashHex}
+                    </code>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            <div className="dash-sim">
+              <h3 className="dash-sim__title">Treasury split preview</h3>
+              <p className="muted dash-sim__hint">
+                See how a deposit would split under your current rules (edit in Policy).
+              </p>
+              <div className="field-row">
+                <div className="field">
+                  <label htmlFor="dash-sim-dep">Sample deposit (smallest units)</label>
+                  <input
+                    id="dash-sim-dep"
+                    type="text"
+                    value={depositSim}
+                    onChange={(e) => setDepositSim(e.target.value)}
+                  />
+                </div>
+                <button type="button" className="ghost" style={{ alignSelf: 'flex-end' }} onClick={onDashSimulate}>
+                  Run preview
+                </button>
+              </div>
+              {dashSimResult ? <pre className="dash-sim__out ok">{dashSimResult}</pre> : null}
+            </div>
+
+            {onChain ? (
+              <div className="dash-share btn-row">
                 <button
                   type="button"
                   className="ghost"
@@ -1959,7 +2054,7 @@ Token full address: ${onChain.mint ?? '—'}`}
                     }
                   }}
                 >
-                  Copy public status link
+                  Copy status link
                 </button>
                 <button
                   type="button"
@@ -1977,43 +2072,63 @@ Token full address: ${onChain.mint ?? '—'}`}
                 >
                   Copy embed link
                 </button>
+                <button type="button" className="ghost" onClick={() => setTab('policy')}>
+                  Edit rules
+                </button>
               </div>
-            </>
-          )}
+            ) : null}
+
+            {projectPda ? (
+              <details className="dash-details">
+                <summary>On-chain project address</summary>
+                <p className="muted">
+                  <code>{projectPda.toBase58()}</code>
+                </p>
+              </details>
+            ) : null}
+
+            {onChain ? (
+              <details className="dash-details">
+                <summary>Team & token details</summary>
+                <pre className="data-block">
+                  {`Team lead (operates payouts): ${shortAddr(onChain.teamLead, 6, 6)}
+Team lead full: ${onChain.teamLead}
+PDA anchor (lookup / links): ${shortAddr(onChain.pdaSeedOwner, 6, 6)}
+PDA anchor full: ${onChain.pdaSeedOwner}
+${onChain.pendingTeamLead ? `Pending handoff to: ${onChain.pendingTeamLead}\n` : ''}Project number: ${onChain.onChainProjectId}
+Rules fingerprint: ${onChain.policyHashHex}
+Delivery proof required to pay: ${onChain.requireArtifactForExecute ? 'yes' : 'no'}
+Token in vault: ${onChain.mint ? shortAddr(onChain.mint, 6, 6) : '—'}
+Token full address: ${onChain.mint ?? '—'}`}
+                </pre>
+              </details>
+            ) : null}
+
+            <details className="overview-help-details">
+              <summary className="overview-help-details__summary">Help — guided tour & this device</summary>
+              <p className="muted overview-help-details__body">
+                <strong>App tour</strong> opens the vault setup walkthrough. <strong>Reset tour</strong> clears completion
+                on this browser. Additional shortcuts live under <strong>Help</strong> in the header.
+              </p>
+              <div className="overview-help-details__actions">
+                <button type="button" className="ghost" onClick={() => setDashboardTourOpen(true)}>
+                  App tour
+                </button>
+                <button type="button" className="ghost" onClick={resetAndOpenDashboardTour}>
+                  Reset tour
+                </button>
+              </div>
+            </details>
           </div>
-          {proposals.length > 0 && (
-            <div className="proposal-list" aria-label="Payout requests">
-              {proposals.map((p) => (
-                <div key={p.proposalId} className={`proposal-card proposal-card--st-${p.statusCode}`}>
-                  <div className="proposal-card-top">
-                    <span className={badgeClassForStatus(p.statusCode)}>{p.status}</span>
-                    <span className="proposal-meta">Proposal #{p.proposalId}</span>
-                  </div>
-                  <div className="proposal-meta">
-                    Limit {p.amount} · paid {p.releasedSoFar} → {shortAddr(p.recipient)} · rules v{p.policyVersionAtProposal}
-                    {p.disputeActive ? ' · in dispute' : ''}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <details className="overview-help-details">
-            <summary className="overview-help-details__summary">Help — guided tour & this device</summary>
-            <p className="muted overview-help-details__body">
-              <strong>App tour</strong> opens the vault setup walkthrough. <strong>Reset tour</strong> clears completion on
-              this browser, opens from step 1, and restores the automatic tour after sign-in until you finish or skip.
-              The same shortcuts appear under the brand in the header.
-            </p>
-            <div className="overview-help-details__actions">
-              <button type="button" className="ghost" onClick={() => setDashboardTourOpen(true)}>
-                App tour
-              </button>
-              <button type="button" className="ghost" onClick={resetAndOpenDashboardTour}>
-                Reset tour
-              </button>
-            </div>
-          </details>
-        </div>
+
+          <ProposalLifecycleSimulator
+            open={lifecycleOpen}
+            onClose={() => setLifecycleOpen(false)}
+            proposals={proposals}
+            approvalThreshold={onChain?.approvalThreshold ?? 1}
+            approverPubkeys={onChain?.approverPubkeys ?? []}
+          />
+        </>
       )}
 
       {tab === 'treasury' && (
@@ -2733,6 +2848,8 @@ Token full address: ${onChain.mint ?? '—'}`}
           />
         </Suspense>
       )}
+        </div>
+      </div>
 
       <DashboardTour open={dashboardTourOpen} onClose={closeDashboardTour} tab={tab} setTab={setTab} />
 
